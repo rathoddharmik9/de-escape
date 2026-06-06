@@ -159,21 +159,21 @@ export const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  sound_bath: "#8a7fe6",
-  supper: "#ff7a5c",
-  run: "#5dcaa5",
-  book_circle: "#f4c97a",
-  cycling: "#f4c97a",
-  other: "#b8b0c8",
+  sound_bath: "#3FA76A",
+  supper: "#A9CE1E",
+  run: "#2C8A4B",
+  book_circle: "#1F6336",
+  cycling: "#C8F135",
+  other: "#8A9384",
 };
 
 export const POSTER_GRADIENTS: Record<string, string> = {
-  sound_bath: "linear-gradient(135deg,#8a7fe6 0%,#5dcaa5 100%)",
-  supper: "linear-gradient(135deg,#ff7a5c 0%,#ff8fb2 100%)",
-  run: "linear-gradient(135deg,#5dcaa5 0%,#8a7fe6 100%)",
-  book_circle: "linear-gradient(135deg,#f4c97a 0%,#ff7a5c 100%)",
-  cycling: "linear-gradient(135deg,#f4c97a 0%,#ffb088 100%)",
-  other: "linear-gradient(135deg,#b8b0c8 0%,#8a7fe6 100%)",
+  sound_bath: "linear-gradient(135deg,#3FA76A 0%,#2C8A4B 100%)",
+  supper: "linear-gradient(135deg,#A9CE1E 0%,#2C8A4B 100%)",
+  run: "linear-gradient(135deg,#2C8A4B 0%,#1F6336 100%)",
+  book_circle: "linear-gradient(135deg,#1F6336 0%,#2C8A4B 100%)",
+  cycling: "linear-gradient(135deg,#C8F135 0%,#A9CE1E 100%)",
+  other: "linear-gradient(135deg,#8A9384 0%,#2C8A4B 100%)",
 };
 
 export function formatPrice(paise: number): string {
