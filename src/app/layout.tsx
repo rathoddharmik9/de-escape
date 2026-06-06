@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, Inter } from "next/font/google";
+import { Fredoka, Poppins } from "next/font/google";
 import "./globals.css";
 
-const instrumentSerif = Instrument_Serif({
-  weight: ["400"],
-  style: ["normal", "italic"],
+const fredoka = Fredoka({
+  weight: ["500", "600", "700"],
   subsets: ["latin"],
-  variable: "--font-serif",
+  variable: "--font-display",
   display: "swap",
 });
 
-const inter = Inter({
+const poppins = Poppins({
   weight: ["300", "400", "500", "600"],
   subsets: ["latin"],
   variable: "--font-sans",
@@ -34,7 +33,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${instrumentSerif.variable} ${inter.variable}`}>
+    <html
+      lang="en"
+      className={`${fredoka.variable} ${poppins.variable}`}
+      style={{ colorScheme: "light" }}
+    >
       <body className="font-sans antialiased">
         <div className="grain" aria-hidden="true" />
         {children}
