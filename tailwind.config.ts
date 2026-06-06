@@ -12,30 +12,23 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        // De-escape brand tokens
+        // De-escape brand tokens (light, logo-true)
         brand: {
-          bg: "#0a0815",
-          "bg-2": "#120e22",
-          ink: "#f6efe1",
-          "ink-2": "#b8b0c8",
-          "ink-3": "#7a738a",
-          coral: "#ff7a5c",
-          peach: "#ffb088",
-          amber: "#f4c97a",
-          pink: "#ff8fb2",
-          violet: "#8a7fe6",
-          teal: "#5dcaa5",
-          // Category colors
-          "sound-bath": "#8a7fe6",
-          supper: "#ff7a5c",
-          run: "#5dcaa5",
-          "book-circle": "#f4c97a",
+          cream: "#F5ECCE",
+          "cream-soft": "#FBF6E6",
+          "cream-deep": "#ECE0C0",
+          green: "#2C8A4B",
+          "green-deep": "#1F6336",
+          "green-ink": "#14331F",
+          lime: "#C8F135",
+          "lime-deep": "#A9CE1E",
+          "ink-dim": "#5C6B5E",
+          "ink-mute": "#8A9384",
         },
-        glass: "rgba(255,255,255,0.06)",
       },
       fontFamily: {
-        serif: ["Instrument Serif", "ui-serif", "Georgia", "serif"],
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "ui-rounded", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       fontSize: {
         "display-xl": ["clamp(56px,9vw,124px)", { lineHeight: "0.95", letterSpacing: "-0.035em" }],
