@@ -3,88 +3,95 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
-import Nav from "@/components/layout/Nav";
-import AmbientMesh from "@/components/layout/AmbientMesh";
+import PublicShell from "@/components/layout/PublicShell";
+import MagneticButton from "@/components/motion/MagneticButton";
 
 function SuccessContent() {
   const params = useSearchParams();
   const name = params.get("name") || "Explorer";
   const regId = `DE-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   const checkRef = useRef<SVGCircleElement>(null);
+  const burstRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Draw the checkmark circle
     const circle = checkRef.current;
-    if (!circle) return;
-    const len = circle.getTotalLength?.() ?? 0;
-    circle.style.strokeDasharray = String(len);
-    circle.style.strokeDashoffset = String(len);
-    setTimeout(() => {
-      circle.style.transition = "stroke-dashoffset 1s ease";
-      circle.style.strokeDashoffset = "0";
-    }, 300);
+    if (circle) {
+      const len = circle.getTotalLength?.() ?? 0;
+      circle.style.strokeDasharray = String(len);
+      circle.style.strokeDashoffset = String(len);
+      setTimeout(() => {
+        circle.style.transition = "stroke-dashoffset 1s ease";
+        circle.style.strokeDashoffset = "0";
+      }, 300);
+    }
+
+    // Restrained lime particle burst
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const host = burstRef.current;
+    if (!host) return;
+    import("gsap").then(({ gsap }) => {
+      const dots: HTMLDivElement[] = [];
+      for (let i = 0; i < 12; i++) {
+        const d = document.createElement("div");
+        d.style.cssText =
+          "position:absolute;top:50%;left:50%;width:8px;height:8px;border-radius:50%;background:var(--lime);pointer-events:none";
+        host.appendChild(d);
+        dots.push(d);
+      }
+      dots.forEach((d, i) => {
+        const angle = (i / dots.length) * Math.PI * 2;
+        gsap.fromTo(
+          d,
+          { x: 0, y: 0, opacity: 1, scale: 1 },
+          {
+            x: Math.cos(angle) * 90,
+            y: Math.sin(angle) * 90,
+            opacity: 0,
+            scale: 0.3,
+            duration: 1,
+            delay: 0.9,
+            ease: "power2.out",
+            onComplete: () => d.remove(),
+          }
+        );
+      });
+    });
   }, []);
 
   return (
     <div className="text-center max-w-[520px] mx-auto">
-      {/* Animated checkmark */}
+      {/* Animated checkmark + burst */}
       <div className="mb-8 flex justify-center">
-        <div className="relative w-24 h-24">
+        <div ref={burstRef} className="relative w-24 h-24">
           <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-            <circle
-              ref={checkRef}
-              cx="50" cy="50" r="44"
-              fill="none"
-              stroke="var(--teal)"
-              strokeWidth="4"
-              strokeLinecap="round"
-            />
+            <circle ref={checkRef} cx="50" cy="50" r="44" fill="none" stroke="var(--green)" strokeWidth="4" strokeLinecap="round" />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
             <svg width="36" height="28" viewBox="0 0 36 28" fill="none" aria-hidden="true">
-              <path
-                d="M3 14l9 9L33 3"
-                stroke="var(--teal)"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="animate-[dash_0.6s_0.8s_ease_forwards]"
-                style={{ strokeDasharray: 50, strokeDashoffset: 50, animation: "none" }}
-              />
+              <path d="M3 14l9 9L33 3" stroke="var(--green)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
         </div>
       </div>
 
-      <div className="text-xs uppercase tracking-[0.2em] text-[var(--teal)] mb-4">
-        Registration received
-      </div>
+      <div className="text-xs uppercase tracking-[0.2em] text-[var(--green)] mb-4">Registration received</div>
 
       <h1
-        className="font-serif font-normal text-[var(--ink)] mb-4"
-        style={{ fontSize: "clamp(36px,6vw,60px)", letterSpacing: "-0.03em", lineHeight: "1" }}
+        className="font-display font-semibold text-[var(--green-ink)] mb-4"
+        style={{ fontSize: "clamp(36px,6vw,60px)", letterSpacing: "-0.02em", lineHeight: "1" }}
       >
         We got you, {name.split(" ")[0]}.
       </h1>
 
-      <p className="text-base text-[var(--ink-2)] leading-relaxed mb-8 max-w-[42ch] mx-auto">
+      <p className="text-base text-[var(--ink-dim)] leading-relaxed mb-8 max-w-[42ch] mx-auto">
         Your registration is in. Watch your WhatsApp and email — we&apos;ll confirm once payment is verified and you&apos;re approved.
       </p>
 
       {/* Registration ID */}
-      <div
-        className="p-5 rounded-2xl mb-8 inline-block"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--glass-border)" }}
-      >
-        <div className="text-[11px] uppercase tracking-widest text-[var(--ink-3)] mb-2">
-          Registration ID
-        </div>
-        <div className="font-mono text-2xl text-[var(--ink)] tracking-widest">
-          {regId}
-        </div>
-        <div className="text-xs text-[var(--ink-3)] mt-2">
-          Save this — you may need it for support
-        </div>
+      <div className="p-5 rounded-2xl mb-8 inline-block surface">
+        <div className="text-[11px] uppercase tracking-widest text-[var(--ink-mute)] mb-2">Registration ID</div>
+        <div className="font-mono text-2xl text-[var(--green-ink)] tracking-widest">{regId}</div>
+        <div className="text-xs text-[var(--ink-mute)] mt-2">Save this — you may need it for support</div>
       </div>
 
       {/* Next steps */}
@@ -94,36 +101,38 @@ function SuccessContent() {
           { step: "2", text: "Once approved, you'll get a pass code on WhatsApp + email" },
           { step: "3", text: "Show your pass code at the venue — that's all" },
         ].map((item) => (
-          <div
-            key={item.step}
-            className="flex gap-4 p-4 rounded-xl"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--glass-border)" }}
-          >
+          <div key={item.step} className="flex gap-4 p-4 rounded-xl surface">
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-[#1a0e08]"
-              style={{ background: "var(--peach)" }}
+              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+              style={{ background: "var(--lime)", color: "var(--green-ink)" }}
             >
               {item.step}
             </div>
-            <p className="text-sm text-[var(--ink-2)] leading-relaxed">{item.text}</p>
+            <p className="text-sm text-[var(--ink-dim)] leading-relaxed">{item.text}</p>
           </div>
         ))}
       </div>
 
       <div className="flex flex-wrap gap-3 justify-center">
-        <Link
-          href="/events"
-          className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-sm font-medium transition-all hover:-translate-y-0.5"
-          style={{ background: "var(--ink)", color: "#1a0e08" }}
-        >
-          Explore more events
-        </Link>
-        <Link
-          href="/find-pass"
-          className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-sm font-medium glass hover:bg-white/10 transition-all hover:-translate-y-0.5 text-[var(--ink)]"
-        >
-          Find my pass later
-        </Link>
+        <MagneticButton className="inline-block">
+          <Link
+            href="/events"
+            data-cursor="Explore"
+            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-sm font-medium transition-all hover:-translate-y-0.5"
+            style={{ background: "var(--green)", color: "var(--cream)" }}
+          >
+            Explore more events
+          </Link>
+        </MagneticButton>
+        <MagneticButton className="inline-block">
+          <Link
+            href="/find-pass"
+            data-cursor="true"
+            className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-sm font-medium surface hover:bg-[var(--cream-deep)] transition-all hover:-translate-y-0.5 text-[var(--green-ink)]"
+          >
+            Find my pass later
+          </Link>
+        </MagneticButton>
       </div>
     </div>
   );
@@ -131,14 +140,12 @@ function SuccessContent() {
 
 export default function SuccessPage() {
   return (
-    <>
-      <AmbientMesh />
-      <Nav />
-      <main className="relative z-10 min-h-screen flex items-center justify-center px-6 pt-32 pb-24">
-        <Suspense fallback={<div className="text-[var(--ink-2)]">Loading…</div>}>
+    <PublicShell initialScene="pulse" footer={false}>
+      <div className="min-h-screen flex items-center justify-center px-6 pt-32 pb-24">
+        <Suspense fallback={<div className="text-[var(--ink-dim)]">Loading…</div>}>
           <SuccessContent />
         </Suspense>
-      </main>
-    </>
+      </div>
+    </PublicShell>
   );
 }
