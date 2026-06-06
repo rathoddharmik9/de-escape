@@ -35,20 +35,20 @@ export default function MarqueeTrack() {
 
   return (
     <div
-      className="relative overflow-hidden py-5 border-y border-[var(--glass-border)]"
-      style={{ background: "rgba(255,255,255,0.02)" }}
+      className="relative z-10 overflow-hidden py-5 border-y border-[var(--surface-border)]"
+      style={{ background: "var(--cream-soft)" }}
       aria-hidden="true"
     >
-      <div ref={trackRef} className="marquee-track">
+      <div ref={trackRef} className="flex gap-12 whitespace-nowrap will-change-transform">
         {doubled.map((tag, i) => (
           <span
             key={i}
-            className="font-serif text-[26px] text-[var(--ink-2)] inline-flex items-center gap-12 whitespace-nowrap"
+            className="font-display text-[26px] text-[var(--green)] opacity-70 inline-flex items-center gap-12 whitespace-nowrap"
           >
             {tag}
             <span
               className="inline-block w-1.5 h-1.5 rounded-full"
-              style={{ background: "var(--coral)" }}
+              style={{ background: "var(--lime-deep)" }}
             />
           </span>
         ))}

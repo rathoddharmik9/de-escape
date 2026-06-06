@@ -14,13 +14,13 @@ const links = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-[var(--glass-border)] px-6 py-12 pb-16">
+    <footer className="relative z-10 border-t border-[var(--surface-border)] px-6 py-12 pb-16">
       <div className="max-w-[1180px] mx-auto flex flex-wrap justify-between items-start gap-8">
         <div>
-          <Link href="/" className="font-serif text-2xl tracking-tight">
-            de—escape<span className="text-[var(--coral)]">.</span>
+          <Link href="/" className="font-display font-semibold text-2xl tracking-tight text-[var(--green)]">
+            de—escape<span className="text-[var(--lime-deep)]">.</span>
           </Link>
-          <p className="mt-2 text-xs text-[var(--ink-3)]">
+          <p className="mt-2 text-xs text-[var(--ink-dim)]">
             © 2026 De-escape. Escape the ordinary.
           </p>
           <div className="mt-4 flex gap-2">
@@ -29,7 +29,8 @@ export default function Footer() {
                 key={s.label}
                 href={s.href}
                 aria-label={s.label}
-                className="w-9 h-9 rounded-full border border-[var(--glass-border)] flex items-center justify-center text-[10px] font-medium text-[var(--ink-2)] transition-colors duration-200 hover:text-[var(--ink)] hover:bg-white/5"
+                data-cursor="true"
+                className="w-9 h-9 rounded-full border border-[var(--surface-border)] flex items-center justify-center text-[10px] font-medium text-[var(--ink-dim)] transition-colors duration-200 hover:text-[var(--green)] hover:bg-[var(--cream-deep)]"
               >
                 {s.icon}
               </a>
@@ -43,7 +44,7 @@ export default function Footer() {
               <li key={l.href}>
                 <Link
                   href={l.href}
-                  className="text-sm text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors duration-200"
+                  className="text-sm text-[var(--ink-dim)] hover:text-[var(--green)] transition-colors duration-200"
                 >
                   {l.label}
                 </Link>
