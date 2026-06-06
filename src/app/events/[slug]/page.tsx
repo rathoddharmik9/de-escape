@@ -5,7 +5,6 @@ import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
 import AmbientMesh from "@/components/layout/AmbientMesh";
 import {
-  EVENTS,
   CATEGORY_LABELS,
   CATEGORY_COLORS,
   POSTER_GRADIENTS,
@@ -14,17 +13,19 @@ import {
   formatTime,
   seatsLeft,
 } from "@/lib/mock-data";
+import { getEventBySlug, getEventBySlugBuild, getPublishedEventSlugs } from "@/lib/data/events";
 
 interface Props {
   params: { slug: string };
 }
 
-export function generateStaticParams() {
-  return EVENTS.map((e) => ({ slug: e.slug }));
+export async function generateStaticParams() {
+  const slugs = await getPublishedEventSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props) {
-  const event = EVENTS.find((e) => e.slug === params.slug);
+  const event = await getEventBySlugBuild(params.slug);
   if (!event) return { title: "Event not found" };
   return {
     title: `${event.title} — De-escape`,
@@ -46,8 +47,8 @@ const POSTER_ICONS: Record<string, string> = {
   other: "◐",
 };
 
-export default function EventDetailPage({ params }: Props) {
-  const event = EVENTS.find((e) => e.slug === params.slug);
+export default async function EventDetailPage({ params }: Props) {
+  const event = await getEventBySlug(params.slug);
   if (!event) notFound();
 
   const left = seatsLeft(event);
@@ -231,7 +232,7 @@ export default function EventDetailPage({ params }: Props) {
                       <div
                         className="h-full rounded-full transition-all duration-700"
                         style={{
-                          width: `${(event.registered / event.capacity) * 100}%`,
+                          width: `${(event.registered_count / event.capacity) * 100}%`,
                           background: almostFull ? "var(--amber)" : catColor,
                         }}
                       />
