@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SceneProvider, useScene } from "@/components/motion/SceneProvider";
 import SceneCanvas from "@/components/motion/SceneCanvas";
 import SmoothScroll from "@/components/motion/SmoothScroll";
 import CustomCursor from "@/components/motion/CustomCursor";
 import Nav from "@/components/layout/Nav";
 import Footer from "@/components/layout/Footer";
+import PageLoader from "@/components/layout/PageLoader";
 import type { SceneName } from "@/lib/motion/scenes";
 
 function SceneSetter({ scene }: { scene: SceneName }) {
@@ -26,8 +27,23 @@ export default function PublicShell({
   initialScene?: SceneName;
   footer?: boolean;
 }) {
+  const [showLoader, setShowLoader] = useState(true);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("de_escape_loaded") === "true") {
+      setShowLoader(false);
+    }
+  }, []);
+
+  const handleLoaderComplete = () => {
+    sessionStorage.setItem("de_escape_loaded", "true");
+    setShowLoader(false);
+    window.dispatchEvent(new Event("de_escape_loaded"));
+  };
+
   return (
     <SceneProvider>
+      {showLoader && <PageLoader onComplete={handleLoaderComplete} />}
       <SceneCanvas />
       <SceneSetter scene={initialScene} />
       <CustomCursor />

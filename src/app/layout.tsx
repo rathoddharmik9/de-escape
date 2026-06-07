@@ -38,6 +38,19 @@ export default function RootLayout({
       className={`${fredoka.variable} ${poppins.variable}`}
       style={{ colorScheme: "light" }}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (sessionStorage.getItem('de_escape_loaded') === 'true') {
+                  document.documentElement.classList.add('loader-skipped');
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body className="font-sans antialiased">
         <div className="grain" aria-hidden="true" />
         {children}

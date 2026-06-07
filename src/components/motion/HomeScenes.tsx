@@ -40,13 +40,27 @@ export default function HomeScenes() {
 
     gsap.registerPlugin(ScrollTrigger);
 
-    // Hero load timeline
-    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-    tl.to("#hero-eyebrow", { opacity: 1, y: 0, duration: 0.6 }, 0.2)
-      .to(".hero-word", { y: "0%", duration: 1.0, stagger: 0.07, ease: "power4.out" }, 0.35)
-      .to("#hero-subline", { opacity: 1, y: 0, duration: 0.7 }, 1.0)
-      .to("#hero-cta", { opacity: 1, y: 0, duration: 0.7 }, 1.15)
-      .to("#hero-card", { opacity: 1, y: 0, duration: 0.9 }, 0.5);
+    const playHeroAnimation = () => {
+      const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+      timeline.to("#hero-eyebrow", { opacity: 1, y: 0, duration: 0.6 }, 0.2)
+        .to(".hero-word", { y: "0%", duration: 1.0, stagger: 0.07, ease: "power4.out" }, 0.35)
+        .to("#hero-subline", { opacity: 1, y: 0, duration: 0.7 }, 1.0)
+        .to("#hero-cta", { opacity: 1, y: 0, duration: 0.7 }, 1.15)
+        .to("#hero-card", { opacity: 1, y: 0, duration: 0.9 }, 0.5);
+      return timeline;
+    };
+
+    let tl: gsap.core.Timeline | undefined;
+    const handleLoad = () => {
+      tl = playHeroAnimation();
+    };
+
+    const isLoaderActive = sessionStorage.getItem("de_escape_loaded") !== "true";
+    if (isLoaderActive) {
+      window.addEventListener("de_escape_loaded", handleLoad);
+    } else {
+      tl = playHeroAnimation();
+    }
 
     // Scene transition dawn -> trail
     const st = ScrollTrigger.create({
@@ -60,7 +74,8 @@ export default function HomeScenes() {
     return () => {
       if (interval) clearInterval(interval);
       st.kill();
-      tl.kill();
+      if (tl) tl.kill();
+      window.removeEventListener("de_escape_loaded", handleLoad);
     };
   }, [setScene]);
 

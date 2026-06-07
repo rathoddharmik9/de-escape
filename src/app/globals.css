@@ -115,3 +115,9 @@ img { display: block; max-width: 100%; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Loader skip logic */
+html.loader-skipped .loader-overlay {
+  display: none !important;
+}
+

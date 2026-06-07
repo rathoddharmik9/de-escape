@@ -14,11 +14,24 @@ export default function Nav() {
       nav.style.transform = "translateX(-50%)";
       return;
     }
-    setTimeout(() => {
+
+    const showNav = () => {
       nav.style.transition = "opacity 0.7s ease, transform 0.7s ease";
       nav.style.opacity = "1";
       nav.style.transform = "translateX(-50%) translateY(0)";
-    }, 100);
+    };
+
+    const isLoaderActive = sessionStorage.getItem("de_escape_loaded") !== "true";
+    if (isLoaderActive) {
+      const handleLoad = () => {
+        showNav();
+      };
+      window.addEventListener("de_escape_loaded", handleLoad);
+      return () => window.removeEventListener("de_escape_loaded", handleLoad);
+    } else {
+      const timer = setTimeout(showNav, 100);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   return (
