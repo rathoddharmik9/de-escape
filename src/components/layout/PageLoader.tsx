@@ -16,14 +16,10 @@ export default function PageLoader({ onComplete }: { onComplete: () => void }) {
         const doc = parser.parseFromString(data, "image/svg+xml");
         const svg = doc.querySelector("svg");
         if (svg) {
-          // Remove the white background path (usually first path with fill #FDFEFD)
-          const paths = svg.querySelectorAll("path");
-          if (paths.length > 0) {
-            const firstPath = paths[0];
-            const fill = firstPath.getAttribute("fill")?.toLowerCase();
-            if (fill === "#fdfefd" || fill === "#ffffff") {
-              firstPath.remove();
-            }
+          // Remove the background rect to make it transparent
+          const rect = svg.querySelector("rect");
+          if (rect) {
+            rect.remove();
           }
 
           // Make the SVG responsive and centered
@@ -55,9 +51,9 @@ export default function PageLoader({ onComplete }: { onComplete: () => void }) {
     // Lock body scroll during animation
     document.body.style.overflow = "hidden";
 
-    const paths = containerRef.current?.querySelectorAll("path");
-    if (!paths || paths.length === 0) {
-      // Fallback simple fade out if no paths found
+    const textElements = containerRef.current?.querySelectorAll("text");
+    if (!textElements || textElements.length === 0) {
+      // Fallback simple fade out if no text elements found
       gsap.to(overlayRef.current, {
         opacity: 0,
         duration: 0.8,
@@ -70,30 +66,24 @@ export default function PageLoader({ onComplete }: { onComplete: () => void }) {
       return;
     }
 
-    // Setup paths for draw animation
-    paths.forEach((path) => {
-      const length = path.getTotalLength();
-      path.style.strokeDasharray = `${length}`;
-      path.style.strokeDashoffset = `${length}`;
+    // Setup text elements for draw animation
+    textElements.forEach((el) => {
+      // Use a fixed value of 1000 for stroke dasharray/offset
+      el.style.strokeDasharray = "1000";
+      el.style.strokeDashoffset = "1000";
 
-      // Tagline paths are colored light green/white in the original SVG
-      const fill = path.getAttribute("fill") || "#177340";
-      const isTagline =
-        fill.toLowerCase() === "#fbfcfa" ||
-        fill.toLowerCase() === "#eafaf6" ||
-        fill.toLowerCase() === "#e4f5f1" ||
-        fill.toLowerCase() === "#e0f3eb" ||
-        fill.toLowerCase() === "#e8f7f2" ||
-        fill.toLowerCase() === "#ebf9f1" ||
-        fill.toLowerCase() === "#e7f8f1";
-
-      path.setAttribute("data-is-tagline", isTagline ? "true" : "false");
+      const isSubtitle = el.classList.contains("subtitle");
 
       // Initial styles for draw phase
-      path.style.fill = "transparent";
-      path.style.stroke = isTagline ? "var(--green-ink)" : "var(--green)";
-      path.style.strokeWidth = "1.2px";
+      el.style.fill = "transparent";
+      el.style.stroke = isSubtitle ? "var(--green-ink)" : "var(--green)";
+      el.style.strokeWidth = isSubtitle ? "1px" : "3.5px";
+      el.style.strokeLinejoin = "round";
     });
+
+    const percentEl = overlayRef.current?.querySelector(".loader-percent");
+    const barEl = overlayRef.current?.querySelector(".loader-bar-fill");
+    const progressObj = { value: 0 };
 
     const tl = gsap.timeline({
       onComplete: () => {
@@ -103,35 +93,58 @@ export default function PageLoader({ onComplete }: { onComplete: () => void }) {
       },
     });
 
-    // 1. Draw outlines of paths sequentially left-to-right (using stagger)
-    tl.to(paths, {
-      strokeDashoffset: 0,
-      duration: 2.2,
-      stagger: 0.008,
-      ease: "power2.inOut",
-    });
+    // 1. Synchronize outline drawing with progress bar and percent counter
+    tl.to(
+      progressObj,
+      {
+        value: 100,
+        duration: 2.2,
+        ease: "power2.inOut",
+        onUpdate: () => {
+          if (percentEl) {
+            percentEl.textContent = String(Math.floor(progressObj.value)).padStart(3, "0") + "%";
+          }
+          if (barEl) {
+            gsap.set(barEl, { scaleX: progressObj.value / 100 });
+          }
+        },
+      },
+      0
+    );
+
+    // Draw outlines of text sequentially (title first, then subtitle)
+    tl.to(
+      textElements,
+      {
+        strokeDashoffset: 0,
+        duration: 2.0,
+        stagger: 0.35,
+        ease: "power2.inOut",
+      },
+      0
+    );
 
     // 2. Transition stroke to transparent and reveal brand colors
     tl.to(
-      paths,
+      textElements,
       {
         fill: (index) => {
-          const path = paths[index] as SVGPathElement;
-          const isTagline = path.getAttribute("data-is-tagline") === "true";
-          return isTagline ? "var(--green-ink)" : "var(--green)";
+          const el = textElements[index] as SVGTextElement;
+          const isSubtitle = el.classList.contains("subtitle");
+          return isSubtitle ? "var(--green-ink)" : "var(--green)";
         },
         stroke: "transparent",
         duration: 0.8,
         ease: "power1.out",
       },
-      "-=0.6"
+      "-=0.5"
     );
 
     // 3. Subtle scale up of the logo container for depth
     tl.to(
       containerRef.current,
       {
-        scale: 1.04,
+        scale: 1.03,
         duration: 1.5,
         ease: "power2.out",
       },
@@ -159,10 +172,15 @@ export default function PageLoader({ onComplete }: { onComplete: () => void }) {
     return (
       <div
         ref={overlayRef}
-        className="loader-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--cream)]"
+        className="loader-overlay fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[var(--cream)]/85 backdrop-blur-xl"
       >
         <div ref={containerRef} className="w-full max-w-lg px-6 text-center select-none">
-          <h1 className="text-4xl font-bold font-display text-[var(--green)]">De-escape</h1>
+          <h1
+            className="text-6xl font-black text-[var(--green)]"
+            style={{ fontFamily: "var(--font-logo), sans-serif", WebkitTextStroke: "1px var(--green)" }}
+          >
+            De-escape
+          </h1>
         </div>
       </div>
     );
@@ -171,13 +189,21 @@ export default function PageLoader({ onComplete }: { onComplete: () => void }) {
   return (
     <div
       ref={overlayRef}
-      className="loader-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-[var(--cream)]"
+      className="loader-overlay fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[var(--cream)]/80 backdrop-blur-xl"
     >
-      <div
-        ref={containerRef}
-        className="w-full max-w-xl px-6 text-center select-none overflow-visible"
-        dangerouslySetInnerHTML={svgHtml ? { __html: svgHtml } : undefined}
-      />
+      <div className="w-full max-w-xl px-6 text-center select-none flex flex-col items-center">
+        <div ref={containerRef} className="w-full overflow-visible">
+          {svgHtml && <div dangerouslySetInnerHTML={{ __html: svgHtml }} />}
+        </div>
+
+        {/* Game-style loading progress indicator */}
+        <div className="w-56 h-[3px] bg-[var(--cream-deep)] rounded-full overflow-hidden mt-8 relative">
+          <div className="loader-bar-fill absolute inset-y-0 left-0 w-full bg-[var(--green)] origin-left scale-x-0" />
+        </div>
+        <div className="loader-percent mt-2.5 font-mono text-[11px] tracking-widest text-[var(--green)] opacity-70">
+          000%
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fredoka, Poppins } from "next/font/google";
+import { Fredoka, Poppins, Nunito } from "next/font/google";
 import "./globals.css";
 
 const fredoka = Fredoka({
@@ -13,6 +13,13 @@ const poppins = Poppins({
   weight: ["300", "400", "500", "600"],
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+const nunito = Nunito({
+  weight: ["900"],
+  subsets: ["latin"],
+  variable: "--font-logo",
   display: "swap",
 });
 
@@ -35,7 +42,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fredoka.variable} ${poppins.variable}`}
+      className={`${fredoka.variable} ${poppins.variable} ${nunito.variable}`}
       style={{ colorScheme: "light" }}
     >
       <head>

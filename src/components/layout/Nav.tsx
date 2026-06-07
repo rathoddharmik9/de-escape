@@ -44,11 +44,25 @@ export default function Nav() {
       className="fixed top-[18px] left-1/2 z-50 w-[min(1180px,calc(100vw-36px))] flex items-center justify-between px-5 py-3 surface rounded-full"
       aria-label="Main navigation"
     >
-      <Link
-        href="/"
-        className="font-display font-semibold text-2xl leading-none tracking-tight text-[var(--green)]"
-      >
-        de—escape<span className="text-[var(--lime-deep)]">.</span>
+      <Link href="/" className="h-8 block overflow-visible" aria-label="De-escape Logo">
+        <svg viewBox="0 0 170 50" className="h-full w-auto overflow-visible">
+          <text
+            x="0"
+            y="38"
+            style={{
+              fontFamily: "var(--font-logo), sans-serif",
+              fontSize: "36px",
+              fontWeight: 900,
+              fill: "var(--green)",
+              stroke: "var(--green)",
+              strokeWidth: "1.2px",
+              strokeLinejoin: "round",
+              letterSpacing: "0.2px",
+            }}
+          >
+            De-escape
+          </text>
+        </svg>
       </Link>
 
       <ul className="hidden md:flex gap-1 list-none" role="menubar">

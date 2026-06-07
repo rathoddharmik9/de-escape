@@ -17,8 +17,25 @@ export default function Footer() {
     <footer className="relative z-10 border-t border-[var(--surface-border)] px-6 py-12 pb-16">
       <div className="max-w-[1180px] mx-auto flex flex-wrap justify-between items-start gap-8">
         <div>
-          <Link href="/" className="font-display font-semibold text-2xl tracking-tight text-[var(--green)]">
-            de—escape<span className="text-[var(--lime-deep)]">.</span>
+          <Link href="/" className="h-8 block overflow-visible" aria-label="De-escape Logo">
+            <svg viewBox="0 0 170 50" className="h-full w-auto overflow-visible">
+              <text
+                x="0"
+                y="38"
+                style={{
+                  fontFamily: "var(--font-logo), sans-serif",
+                  fontSize: "36px",
+                  fontWeight: 900,
+                  fill: "var(--green)",
+                  stroke: "var(--green)",
+                  strokeWidth: "1.2px",
+                  strokeLinejoin: "round",
+                  letterSpacing: "0.2px",
+                }}
+              >
+                De-escape
+              </text>
+            </svg>
           </Link>
           <p className="mt-2 text-xs text-[var(--ink-dim)]">
             © 2026 De-escape. Escape the ordinary.
