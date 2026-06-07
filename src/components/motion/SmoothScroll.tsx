@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Lenis from "lenis";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 export default function SmoothScroll({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
   useEffect(() => {
+    if (pathname.startsWith("/admin")) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     gsap.registerPlugin(ScrollTrigger);
     const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
@@ -20,6 +24,6 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
       gsap.ticker.remove(raf);
       lenis.destroy();
     };
-  }, []);
+  }, [pathname]);
   return <>{children}</>;
 }

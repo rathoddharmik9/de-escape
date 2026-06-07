@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 import { Fredoka, Poppins, Nunito } from "next/font/google";
+import { SceneProvider } from "@/components/motion/SceneProvider";
+import SceneCanvas from "@/components/motion/SceneCanvas";
+import CustomCursor from "@/components/motion/CustomCursor";
+import SmoothScroll from "@/components/motion/SmoothScroll";
+import PageLoaderWrapper from "@/components/layout/PageLoaderWrapper";
 import "./globals.css";
 
 const fredoka = Fredoka({
@@ -60,7 +65,14 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <div className="grain" aria-hidden="true" />
-        {children}
+        <SceneProvider>
+          <PageLoaderWrapper />
+          <SceneCanvas />
+          <CustomCursor />
+          <SmoothScroll>
+            {children}
+          </SmoothScroll>
+        </SceneProvider>
       </body>
     </html>
   );

@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { gsap } from "gsap";
 
 export default function CustomCursor() {
+  const pathname = usePathname();
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
+    if (pathname.startsWith("/admin")) return;
     const fine = window.matchMedia("(pointer: fine)").matches;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!fine || reduce) return;
@@ -55,7 +58,9 @@ export default function CustomCursor() {
       document.removeEventListener("pointerover", over);
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [pathname]);
+
+  if (pathname.startsWith("/admin")) return null;
 
   return (
     <>

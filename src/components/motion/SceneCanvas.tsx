@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { Renderer, Program, Mesh, Triangle, Vec2 } from "ogl";
 import { useScene } from "./SceneProvider";
 import { baseVert, fieldFrag } from "./shaders";
@@ -12,10 +13,12 @@ function lowGpu(): boolean {
 }
 
 export default function SceneCanvas() {
+  const pathname = usePathname();
   const { uniformsRef } = useScene();
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (pathname.startsWith("/admin")) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const wrap = wrapRef.current;
     if (!wrap) return;
@@ -95,7 +98,9 @@ export default function SceneCanvas() {
       window.removeEventListener("scroll", onScroll);
       gl.canvas.remove();
     };
-  }, [uniformsRef]);
+  }, [uniformsRef, pathname]);
+
+  if (pathname.startsWith("/admin")) return null;
 
   return (
     <div
