@@ -45,7 +45,7 @@ export default async function HomePage() {
             <h1
               id="hero-headline"
               className="font-display font-semibold leading-[0.95] tracking-[-0.02em] text-[var(--green-ink)] max-w-[14ch]"
-              style={{ fontSize: "clamp(52px,8vw,112px)" }}
+              style={{ fontSize: "clamp(44px,6.5vw,84px)" }}
             >
               {["Escape", "the"].map((word) => (
                 <span key={word} className="inline-block overflow-hidden align-bottom px-[0.04em]">

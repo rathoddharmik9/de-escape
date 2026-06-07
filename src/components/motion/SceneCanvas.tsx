@@ -102,7 +102,7 @@ export default function SceneCanvas() {
       ref={wrapRef}
       aria-hidden="true"
       className="fixed inset-0 z-0 pointer-events-none"
-      style={{ opacity: 0.9 }}
+      style={{ opacity: 0.3 }}
     />
   );
 }
