@@ -22,9 +22,8 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { data: { user } } = await supabase.auth.getUser();
 
   const isLoginPage = request.nextUrl.pathname === "/admin/login";
   const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
