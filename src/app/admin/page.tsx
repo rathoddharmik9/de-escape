@@ -1,34 +1,114 @@
 import Link from "next/link";
-import { EVENTS, formatPrice, formatDate } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/server";
+import { formatPrice, formatDate } from "@/lib/mock-data";
+import type { Event } from "@/lib/types";
 
-const KPIs = [
-  { label: "Active events", value: "4", unit: "", color: "#8a7fe6", delta: "+1 this week" },
-  { label: "Pending reviews", value: "3", unit: "", color: "#ff7a5c", delta: "Needs action" },
-  { label: "Revenue this month", value: "₹18,400", unit: "", color: "#5dcaa5", delta: "+34% vs last mo" },
-  { label: "Attendance rate", value: "87", unit: "%", color: "#f4c97a", delta: "Last 30 days" },
-];
+// Helper to format timestamps relative to now
+function formatTimeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.round(diffMs / 60000);
+  
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  
+  const diffHrs = Math.round(diffMin / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  
+  const diffDays = Math.round(diffHrs / 24);
+  return `${diffDays}d ago`;
+}
 
-const RECENT_ACTIONS = [
-  { action: "Registration approved", detail: "Priya Sharma → Midnight Cycling", time: "2m ago", type: "success" },
-  { action: "New registration", detail: "Arjun K → Strangers + Chai", time: "14m ago", type: "info" },
-  { action: "Registration rejected", detail: "Anonymous → Slow Supper", time: "1h ago", type: "warning" },
-  { action: "Event published", detail: "Sunset Sound Bath", time: "3h ago", type: "info" },
-  { action: "Broadcast sent", detail: "48h reminder → 28 attendees", time: "5h ago", type: "success" },
-];
+// Action label mapping helper
+const ACTION_LABELS: Record<string, { label: string; type: string }> = {
+  "registration.approve": { label: "Registration approved", type: "success" },
+  "registration.reject": { label: "Registration rejected", type: "warning" },
+  "registration.refund": { label: "Registration refunded", type: "warning" },
+  "registration.mark_attendance": { label: "Attendance updated", type: "info" },
+  "event.create": { label: "Event created", type: "info" },
+  "event.update": { label: "Event updated", type: "info" },
+  "event.publish": { label: "Event published", type: "success" },
+  "event.cancel": { label: "Event cancelled", type: "warning" },
+};
 
-export default function AdminDashboard() {
-  const upcomingEvents = EVENTS.filter((e) => e.status === "published").slice(0, 4);
+export default async function AdminDashboard() {
+  const supabase = createClient();
+  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
+  // 1. Fetch active events count
+  const { count: activeEventsCount } = await supabase
+    .from("events")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["published", "sold_out"]);
+
+  // 2. Fetch pending registrations count
+  const { count: pendingCount } = await supabase
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "awaiting_verification");
+
+  // 3. Fetch revenue this month
+  const { data: revData } = await supabase
+    .from("registrations")
+    .select("amount_paise")
+    .in("status", ["approved", "attended"])
+    .gte("created_at", startOfMonth);
+
+  const revenueThisMonth = (revData ?? []).reduce((acc, r) => acc + r.amount_paise, 0);
+
+  // 4. Fetch attendance rate
+  const { data: attendanceData } = await supabase
+    .from("registrations")
+    .select("status")
+    .in("status", ["attended", "no_show"]);
+
+  const attendedCount = (attendanceData ?? []).filter((r) => r.status === "attended").length;
+  const totalAttendanceCount = (attendanceData ?? []).length;
+  const attendanceRate = totalAttendanceCount > 0 ? Math.round((attendedCount / totalAttendanceCount) * 100) : 0;
+
+  // 5. Fetch upcoming events (max 4)
+  const { data: upcomingEvents } = await supabase
+    .from("events")
+    .select("*")
+    .in("status", ["published", "sold_out"])
+    .order("start_at", { ascending: true })
+    .limit(4);
+
+  // 6. Fetch recent audit logs (max 5)
+  const { data: logs } = await supabase
+    .from("audit_log")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const KPIs = [
+    { label: "Active events", value: String(activeEventsCount ?? 0), unit: "", color: "var(--ok)", delta: "Published & sold out" },
+    { label: "Pending reviews", value: String(pendingCount ?? 0), unit: "", color: "var(--warn)", delta: "Awaiting verification" },
+    { label: "Revenue this month", value: formatPrice(revenueThisMonth), unit: "", color: "var(--green)", delta: "Approved or attended" },
+    { label: "Attendance rate", value: String(attendanceRate), unit: "%", color: "var(--info)", delta: "Attended vs No-show" },
+  ];
+
+  const recentActions = (logs ?? []).map((log) => {
+    const actionConfig = ACTION_LABELS[log.action] || { label: log.action, type: "info" };
+    return {
+      action: actionConfig.label,
+      detail: `ID: ${log.target_id || "System"}`,
+      time: formatTimeAgo(log.created_at),
+      type: actionConfig.type,
+    };
+  });
 
   return (
     <div className="max-w-[1100px]">
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="font-serif text-3xl text-[var(--ink)] tracking-tight">
+          <h1 className="font-display text-3xl text-[var(--green-ink)] tracking-tight">
             Good evening, Dharmik.
           </h1>
-          <p className="text-sm text-[var(--ink-3)] mt-1">
-            Saturday, 7 June 2026 · Mumbai
+          <p className="text-sm text-[var(--ink-dim)] mt-1">
+            Mumbai Admin Console
           </p>
         </div>
       </div>
@@ -38,26 +118,25 @@ export default function AdminDashboard() {
         {KPIs.map((kpi) => (
           <div
             key={kpi.label}
-            className="p-5 rounded-2xl"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--glass-border)" }}
+            className="surface p-5 rounded-2xl"
           >
-            <div className="text-[11px] uppercase tracking-widest text-[var(--ink-3)] mb-3">
+            <div className="text-[11px] uppercase tracking-widest text-[var(--ink-mute)] mb-3">
               {kpi.label}
             </div>
             <div className="flex items-baseline gap-1">
               <span
-                className="font-serif leading-none"
+                className="font-display leading-none"
                 style={{ fontSize: "clamp(32px,4vw,44px)", color: kpi.color, letterSpacing: "-0.02em" }}
               >
                 {kpi.value}
               </span>
               {kpi.unit && (
-                <span className="text-lg font-serif" style={{ color: kpi.color }}>
+                <span className="text-lg font-display" style={{ color: kpi.color }}>
                   {kpi.unit}
                 </span>
               )}
             </div>
-            <div className="mt-2 text-xs text-[var(--ink-3)]">{kpi.delta}</div>
+            <div className="mt-2 text-xs text-[var(--ink-dim)]">{kpi.delta}</div>
           </div>
         ))}
       </div>
@@ -66,113 +145,119 @@ export default function AdminDashboard() {
         {/* Upcoming events */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium text-[var(--ink)] uppercase tracking-widest">
+            <h2 className="text-sm font-medium text-[var(--green-ink)] uppercase tracking-widest">
               Upcoming events
             </h2>
             <Link
               href="/admin/events"
-              className="text-xs text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors"
+              className="text-xs text-[var(--ink-mute)] hover:text-[var(--green-ink)] transition-colors"
             >
               View all →
             </Link>
           </div>
 
           <div className="space-y-3">
-            {upcomingEvents.map((event) => {
-              const pct = Math.round((event.registered_count / event.capacity) * 100);
-              return (
-                <Link
-                  key={event.id}
-                  href={`/admin/events/${event.id}`}
-                  className="block p-4 rounded-2xl transition-all hover:bg-white/5"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--glass-border)" }}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-[var(--ink)] truncate">{event.title}</div>
-                      <div className="text-xs text-[var(--ink-3)] mt-0.5">
-                        {formatDate(event.start_at)} · {event.venue_name}
+            {upcomingEvents && upcomingEvents.length > 0 ? (
+              (upcomingEvents as Event[]).map((event) => {
+                const pct = event.capacity > 0 ? Math.round((event.registered_count / event.capacity) * 100) : 0;
+                return (
+                  <Link
+                    key={event.id}
+                    href={`/admin/events/${event.id}`}
+                    className="surface block p-4 rounded-2xl transition-all hover:bg-[var(--cream-deep)]/30"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-[var(--green-ink)] truncate">{event.title}</div>
+                        <div className="text-xs text-[var(--ink-mute)] mt-0.5">
+                          {formatDate(event.start_at)} · {event.venue_name}
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-sm text-[var(--green-ink)]">{event.registered_count}/{event.capacity}</div>
+                        <div className="text-xs text-[var(--ink-mute)]">{formatPrice(event.price_paise)}</div>
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-sm text-[var(--ink)]">{event.registered_count}/{event.capacity}</div>
-                      <div className="text-xs text-[var(--ink-3)]">{formatPrice(event.price_paise)}</div>
-                    </div>
-                  </div>
 
-                  {/* Capacity bar */}
-                  <div className="mt-3 h-1 rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${pct}%`,
-                        background: pct >= 85 ? "var(--amber)" : "var(--teal)",
-                        transition: "width 0.6s ease",
-                      }}
-                    />
-                  </div>
-                </Link>
-              );
-            })}
+                    {/* Capacity bar */}
+                    <div className="mt-3 h-1 rounded-full bg-[var(--cream-deep)] overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${pct}%`,
+                          background: pct >= 85 ? "var(--warn)" : "var(--ok)",
+                          transition: "width 0.6s ease",
+                        }}
+                      />
+                    </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="p-8 text-center text-xs text-[var(--ink-mute)] border border-dashed border-[var(--surface-border)] rounded-2xl">
+                No active events found.
+              </div>
+            )}
           </div>
         </div>
 
         {/* Recent activity */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-medium text-[var(--ink)] uppercase tracking-widest">
+            <h2 className="text-sm font-medium text-[var(--green-ink)] uppercase tracking-widest">
               Recent activity
             </h2>
             <Link
               href="/admin/audit-log"
-              className="text-xs text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors"
+              className="text-xs text-[var(--ink-mute)] hover:text-[var(--green-ink)] transition-colors"
             >
               Audit log →
             </Link>
           </div>
 
           <div
-            className="rounded-2xl overflow-hidden"
-            style={{ border: "1px solid var(--glass-border)" }}
+            className="surface rounded-2xl overflow-hidden mb-4"
           >
-            {RECENT_ACTIONS.map((item, i) => (
-              <div
-                key={i}
-                className="px-4 py-3 flex items-start gap-3"
-                style={{ background: "rgba(255,255,255,0.02)" }}
-              >
+            {recentActions.length > 0 ? (
+              recentActions.map((item, i) => (
                 <div
-                  className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                  style={{
-                    background:
-                      item.type === "success"
-                        ? "var(--teal)"
-                        : item.type === "warning"
-                        ? "var(--amber)"
-                        : "var(--violet)",
-                  }}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-medium text-[var(--ink)]">{item.action}</div>
-                  <div className="text-xs text-[var(--ink-3)] truncate">{item.detail}</div>
+                  key={i}
+                  className="px-4 py-3 flex items-start gap-3 border-b last:border-0 border-[var(--surface-border)]"
+                >
+                  <div
+                    className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                    style={{
+                      background:
+                        item.type === "success"
+                          ? "var(--ok)"
+                          : item.type === "warning"
+                          ? "var(--warn)"
+                          : "var(--info)",
+                    }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-medium text-[var(--green-ink)]">{item.action}</div>
+                    <div className="text-xs text-[var(--ink-mute)] truncate">{item.detail}</div>
+                  </div>
+                  <div className="text-[10px] text-[var(--ink-mute)] flex-shrink-0 pt-0.5">{item.time}</div>
                 </div>
-                <div className="text-[10px] text-[var(--ink-3)] flex-shrink-0 pt-0.5">{item.time}</div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="p-8 text-center text-xs text-[var(--ink-mute)]">No activity logged.</div>
+            )}
           </div>
 
           {/* Quick actions */}
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Link
               href="/admin/registrations"
-              className="py-3 rounded-xl text-xs font-medium text-center glass hover:bg-white/8 transition-all text-[var(--ink)]"
+              className="surface py-3 rounded-xl text-xs font-medium text-center hover:bg-[var(--cream-deep)]/30 transition-all text-[var(--green-ink)]"
             >
-              Review pending (3)
+              Review pending ({pendingCount ?? 0})
             </Link>
             <Link
               href="/admin/events/new"
-              className="py-3 rounded-xl text-xs font-medium text-center transition-all hover:-translate-y-0.5 text-[#1a0e08]"
-              style={{ background: "var(--peach)" }}
+              className="py-3 rounded-xl text-xs font-medium text-center transition-all hover:-translate-y-0.5 bg-[var(--green)] text-[var(--cream)]"
             >
               + Create event
             </Link>

@@ -31,6 +31,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local config
+.deepseek/
+.supabase/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

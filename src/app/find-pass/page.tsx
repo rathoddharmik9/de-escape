@@ -3,6 +3,7 @@
 import { useState } from "react";
 import PublicShell from "@/components/layout/PublicShell";
 import MagneticButton from "@/components/motion/MagneticButton";
+import { lookupPass } from "@/lib/actions/find-pass";
 
 export default function FindPassPage() {
   const [phone, setPhone] = useState("");
@@ -16,9 +17,20 @@ export default function FindPassPage() {
     if (!phone || !email) { setError("Both fields required."); return; }
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setSubmitted(true);
+    
+    try {
+      const res = await lookupPass(phone, email);
+      if (res.success) {
+        setSubmitted(true);
+      } else {
+        setError(res.error || "No registration found with those details.");
+      }
+    } catch (err) {
+      console.error("Lookup submit error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   const inputClass =
