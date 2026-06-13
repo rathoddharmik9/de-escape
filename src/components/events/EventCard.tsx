@@ -125,9 +125,7 @@ export default function EventCard({ event, index = 0 }: Props) {
                     }}
                   />
                 )}
-                {event.payment_mode === "free"
-                  ? `${left} going`
-                  : almostFull
+                {almostFull
                   ? `${left} left`
                   : `${left} seats`}
               </span>

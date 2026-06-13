@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import PublicShell from "@/components/layout/PublicShell";
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default async function PassPage({ params }: Props) {
-  const supabase = createClient();
+  const supabase = createAdminClient();
   
   const { data: registration, error: regError } = await supabase
     .from("registrations")

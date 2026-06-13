@@ -70,10 +70,16 @@ create policy "admins can perform all actions on registrations"
 create or replace function public.handle_admin_signup()
 returns trigger as $$
 begin
-  -- promote dharmik's email or configuration email
-  if new.email = 'dharmik@de-escape.in' or new.email = 'dharmikrathod@example.com' or new.email = 'dharmikrathod98@gmail.com' then
+  -- promote admin emails
+  if new.email in (
+    'dharmik@de-escape.in',
+    'dharmikrathod@example.com',
+    'dharmikrathod98@gmail.com',
+    'rathoddharmik9@gmail.com'
+  ) then
     insert into public.admins (user_id, email, role)
-    values (new.id, new.email, 'super_admin');
+    values (new.id, new.email, 'super_admin')
+    on conflict (email) do nothing;
   end if;
   return new;
 end;

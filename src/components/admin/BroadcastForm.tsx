@@ -395,7 +395,7 @@ export default function BroadcastForm({ events, templates }: BroadcastFormProps)
             <div className="p-4 bg-[#F5ECCE] max-h-[350px] overflow-y-auto">
               <div className="bg-[#FBF6E6] border border-zinc-200 rounded-xl overflow-hidden max-w-sm mx-auto shadow-sm">
                 <div className="py-4 text-center border-b border-zinc-100 bg-[#FBF6E6]">
-                  <span className="font-semibold text-emerald-800 tracking-tight">de—escape.</span>
+                  <span className="font-black text-emerald-800 tracking-wide text-lg" style={{ fontFamily: "var(--font-logo), sans-serif" }}>De-escape</span>
                 </div>
                 
                 {/* HTML content inside email preview */}

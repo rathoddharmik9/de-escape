@@ -49,6 +49,7 @@ export default function RootLayout({
       lang="en"
       className={`${fredoka.variable} ${poppins.variable} ${nunito.variable}`}
       style={{ colorScheme: "light" }}
+      suppressHydrationWarning
     >
       <head>
         <script

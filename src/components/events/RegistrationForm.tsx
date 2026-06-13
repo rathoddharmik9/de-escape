@@ -10,6 +10,8 @@ import MagneticButton from "@/components/motion/MagneticButton";
 import { formatPrice, formatDate } from "@/lib/mock-data";
 import type { Event } from "@/lib/types";
 import { registerAttendee } from "@/lib/actions/register";
+import { useSessionStore } from "@/lib/store/useSessionStore";
+import { useEffect } from "react";
 
 declare global {
   interface Window {
@@ -46,6 +48,10 @@ export default function RegistrationForm({ event }: FormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [turnstileToken, setTurnstileToken] = useState("");
 
+  const profile = useSessionStore((state) => state.profile);
+  const setProfile = useSessionStore((state) => state.setProfile);
+  const setLastRegistration = useSessionStore((state) => state.setLastRegistration);
+
   const [form, setForm] = useState({
     fullName: "",
     phone: "",
@@ -58,6 +64,21 @@ export default function RegistrationForm({ event }: FormProps) {
     consent: true,
     screenshot: null as File | null,
   });
+
+  useEffect(() => {
+    if (profile) {
+      setForm((prev) => ({
+        ...prev,
+        fullName: profile.fullName || prev.fullName,
+        phone: profile.phone || prev.phone,
+        email: profile.email || prev.email,
+        age: profile.age || prev.age,
+        city: profile.city || prev.city,
+        instagram: profile.instagram || prev.instagram,
+      }));
+    }
+  }, [profile]);
+  const [customAnswers, setCustomAnswers] = useState<Record<string, string | number | boolean>>({});
 
   function set(field: string, value: string | boolean | File | null) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -88,6 +109,28 @@ export default function RegistrationForm({ event }: FormProps) {
     if (event.payment_mode === "manual_upi" && !form.screenshot) {
       errs.screenshot = "Payment screenshot required";
     }
+
+    const customFields = event.custom_fields || [];
+    customFields.forEach((field) => {
+      if (field.required) {
+        const val = customAnswers[field.key];
+        if (field.type === "checkbox") {
+          if (!val) {
+            errs[field.key] = `${field.label} is required`;
+          }
+        } else {
+          if (
+            val === undefined ||
+            val === null ||
+            val === "" ||
+            (typeof val === "string" && !val.trim())
+          ) {
+            errs[field.key] = `${field.label} is required`;
+          }
+        }
+      }
+    });
+
     return errs;
   }
 
@@ -136,6 +179,7 @@ export default function RegistrationForm({ event }: FormProps) {
         screenshotBase64,
         screenshotName,
         turnstileToken,
+        customAnswers,
       };
 
       const res = await registerAttendee(payload);
@@ -145,6 +189,25 @@ export default function RegistrationForm({ event }: FormProps) {
         setSubmitting(false);
         return;
       }
+
+      // Save attendee details to store
+      setProfile({
+        fullName: form.fullName,
+        phone: form.phone,
+        email: form.email,
+        age: form.age,
+        city: form.city,
+        instagram: form.instagram,
+      });
+
+      // Save last registration session details to store
+      setLastRegistration({
+        registrationId: res.registrationId || "",
+        passCode: res.passCode || "",
+        fullName: form.fullName,
+        status: res.status || "pending",
+        eventTitle: event.title,
+      });
 
       if (event.payment_mode === "razorpay" && res.razorpayOrder) {
         const options = {
@@ -352,6 +415,118 @@ export default function RegistrationForm({ event }: FormProps) {
                   )}
                 </label>
                 {errors.screenshot && <p data-field-error className="mt-1.5 text-xs text-[var(--error)]">{errors.screenshot}</p>}
+              </div>
+            )}
+
+            {/* Custom Fields */}
+            {event.custom_fields && event.custom_fields.length > 0 && (
+              <div className="space-y-5">
+                {event.custom_fields.map((field) => {
+                  const errorMsg = errors[field.key];
+                  const value = customAnswers[field.key];
+
+                  return (
+                    <div key={field.key}>
+                      {field.type === "checkbox" ? (
+                        <div>
+                          <label className="flex items-start gap-3 cursor-pointer group">
+                            <div className="relative mt-0.5 flex-shrink-0">
+                              <input
+                                type="checkbox"
+                                checked={!!value}
+                                onChange={(e) => {
+                                  setCustomAnswers((prev) => ({ ...prev, [field.key]: e.target.checked }));
+                                  setErrors((prev) => ({ ...prev, [field.key]: "" }));
+                                }}
+                                className="sr-only peer"
+                              />
+                              <div
+                                className={`w-5 h-5 rounded-md border-2 transition-all duration-200 flex items-center justify-center ${
+                                  value ? "border-[var(--green)] bg-[var(--green)]" : "border-[var(--surface-border)] bg-transparent"
+                                } ${errorMsg ? "!border-[var(--error)]" : ""}`}
+                              >
+                                {value && (
+                                  <svg width="12" height="9" viewBox="0 0 12 9" fill="none" aria-hidden="true">
+                                    <path d="M1 4l3.5 3.5L11 1" stroke="#F5ECCE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-sm text-[var(--ink-dim)] leading-relaxed">
+                              {field.label} {field.required && <span className="text-[var(--green)]">*</span>}
+                            </span>
+                          </label>
+                          {errorMsg && <p data-field-error className="mt-1.5 text-xs text-[var(--error)] ml-8">{errorMsg}</p>}
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
+                            {field.label} {field.required && <span className="text-[var(--green)]">*</span>}
+                          </label>
+                          {field.type === "textarea" ? (
+                            <textarea
+                              placeholder={`Enter ${field.label.toLowerCase()}…`}
+                              value={(value as string) || ""}
+                              onChange={(e) => {
+                                setCustomAnswers((prev) => ({ ...prev, [field.key]: e.target.value }));
+                                setErrors((prev) => ({ ...prev, [field.key]: "" }));
+                              }}
+                              className={`${inputClass(field.key)} resize-none`}
+                              rows={3}
+                            />
+                          ) : field.type === "select" ? (
+                            <select
+                              value={(value as string) || ""}
+                              onChange={(e) => {
+                                setCustomAnswers((prev) => ({ ...prev, [field.key]: e.target.value }));
+                                setErrors((prev) => ({ ...prev, [field.key]: "" }));
+                              }}
+                              className={`${inputClass(field.key)} appearance-none`}
+                            >
+                              <option value="">Select…</option>
+                              {field.options?.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          ) : field.type === "number" ? (
+                            <input
+                              type="number"
+                              placeholder={`Enter ${field.label.toLowerCase()}…`}
+                              value={(value as string) || ""}
+                              onChange={(e) => {
+                                let val: string | number = e.target.value;
+                                if (val !== "") {
+                                  const parsedNum = Number(val);
+                                  if (!isNaN(parsedNum)) {
+                                    val = parsedNum;
+                                  }
+                                }
+                                setCustomAnswers((prev) => ({ ...prev, [field.key]: val }));
+                                setErrors((prev) => ({ ...prev, [field.key]: "" }));
+                              }}
+                              className={inputClass(field.key)}
+                            />
+                          ) : (
+                            // Default: text
+                            <input
+                              type="text"
+                              placeholder={`Enter ${field.label.toLowerCase()}…`}
+                              value={(value as string) || ""}
+                              onChange={(e) => {
+                                setCustomAnswers((prev) => ({ ...prev, [field.key]: e.target.value }));
+                                setErrors((prev) => ({ ...prev, [field.key]: "" }));
+                              }}
+                              className={inputClass(field.key)}
+                            />
+                          )}
+                          {errorMsg && <p data-field-error className="mt-1.5 text-xs text-[var(--error)]">{errorMsg}</p>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 

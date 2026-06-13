@@ -14,7 +14,8 @@ async function verifyAdminSession() {
   }
 
   // Check if admin
-  const { data: admin } = await supabase
+  const adminClient = createAdminClient();
+  const { data: admin } = await adminClient
     .from("admins")
     .select("role")
     .eq("user_id", user.id)

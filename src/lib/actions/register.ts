@@ -7,17 +7,14 @@ import { z } from "zod";
 import Razorpay from "razorpay";
 import { sendEmail } from "@/lib/comms/email";
 import { sendWhatsAppTemplate } from "@/lib/comms/whatsapp";
+import { revalidatePath } from "next/cache";
 
-function formatCommsDate(dateString: string): string {
-  const d = new Date(dateString);
-  return d.toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    weekday: "long",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }) + " IST";
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (error) {
+    // Ignore Next.js invariant errors outside request context
+  }
 }
 
 
@@ -139,7 +136,7 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       return { success: false, message: "Event not found." };
     }
 
-    if (event.status === "cancelled" || event.status === "past") {
+    if (event.status === "draft" || event.status === "cancelled" || event.status === "past") {
       return { success: false, message: "This event is no longer active." };
     }
 
@@ -184,10 +181,10 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       } else {
         return { success: false, message: "Payment screenshot is required for UPI payment." };
       }
-    } else if (event.payment_mode === "free") {
-      status = "awaiting_verification";
     } else if (event.payment_mode === "razorpay") {
       status = "awaiting_payment";
+    } else if (event.payment_mode === "free") {
+      status = "awaiting_verification";
     }
 
     // 8. Razorpay Order Creation
@@ -250,46 +247,15 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       return { success: false, message: "Database registration error." };
     }
 
+    safeRevalidatePath("/");
+    safeRevalidatePath("/events");
+    safeRevalidatePath(`/events/${event.slug}`);
+
     // 10. Outbound Comms Triggers
     if (status === "awaiting_verification") {
       (async () => {
         try {
-          const formattedDatetime = formatCommsDate(event.start_at);
-          
-          if (event.payment_mode === "free") {
-            const { data: templateData } = await supabase
-              .from("whatsapp_templates")
-              .select("meta_template_name")
-              .eq("template_key", "registration_received")
-              .maybeSingle();
-            const metaTemplateName = templateData?.meta_template_name || "registration_received";
-
-            await sendWhatsAppTemplate({
-              to: normalizedPhone,
-              templateKey: "registration_received",
-              metaTemplateName,
-              variables: [fullName, event.title, formattedDatetime],
-              registrationId,
-              eventId,
-            });
-
-            const emailHtml = `
-              <h2 style="font-family: 'Fredoka', sans-serif; color: #2C8A4B; margin-top: 0;">Registration Received!</h2>
-              <p>Hey ${fullName},</p>
-              <p>We've received your registration for <strong>${event.title}</strong> on ${formattedDatetime}.</p>
-              <p>Our team is currently verifying the details. We will notify you via email/WhatsApp as soon as your pass is approved.</p>
-            `;
-            await sendEmail({
-              to: normalizedEmail,
-              subject: `Registration Received: ${event.title}`,
-              templateKey: "registration_received",
-              registrationId,
-              eventId,
-              payload: { name: fullName, event_title: event.title, event_date: formattedDatetime },
-              htmlContent: emailHtml,
-            });
-
-          } else if (event.payment_mode === "manual_upi") {
+          if (event.payment_mode === "manual_upi") {
             const { data: templateData } = await supabase
               .from("whatsapp_templates")
               .select("meta_template_name")
@@ -319,6 +285,44 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
               registrationId,
               eventId,
               payload: { name: fullName, event_title: event.title },
+              htmlContent: emailHtml,
+            });
+          } else if (event.payment_mode === "free") {
+            const { data: templateData } = await supabase
+              .from("whatsapp_templates")
+              .select("meta_template_name")
+              .eq("template_key", "registration_received")
+              .maybeSingle();
+            const metaTemplateName = templateData?.meta_template_name || "registration_received";
+
+            const formattedDate = new Date(event.start_at).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            });
+
+            await sendWhatsAppTemplate({
+              to: normalizedPhone,
+              templateKey: "registration_received",
+              metaTemplateName,
+              variables: [fullName, event.title, formattedDate],
+              registrationId,
+              eventId,
+            });
+
+            const emailHtml = `
+              <h2 style="font-family: 'Fredoka', sans-serif; color: #2C8A4B; margin-top: 0;">Registration Received</h2>
+              <p>Hey ${fullName},</p>
+              <p>We've received your registration for <strong>${event.title}</strong> on <strong>${formattedDate}</strong>.</p>
+              <p>Our team is reviewing your registration. We'll send you your passcode and ticket pass once approved.</p>
+            `;
+            await sendEmail({
+              to: normalizedEmail,
+              subject: `Registration Received: ${event.title}`,
+              templateKey: "registration_received",
+              registrationId,
+              eventId,
+              payload: { name: fullName, event_title: event.title, event_date: formattedDate },
               htmlContent: emailHtml,
             });
           }

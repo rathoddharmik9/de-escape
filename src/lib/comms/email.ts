@@ -3,7 +3,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const AWS_REGION = process.env.AWS_REGION || "ap-south-1";
 const SES_SENDER_EMAIL = process.env.SES_SENDER_EMAIL || "De-escape <noreply@de-escape.in>";
-const SIMULATE_COMMS = process.env.SIMULATE_COMMS === "true";
 
 // AWS SES client lazy initialization
 let sesClient: SESClient | null = null;
@@ -56,7 +55,7 @@ function wrapEmailHtml(content: string): string {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>De-escape</title>
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Poppins:wght@300;400;500;600&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@900&family=Poppins:wght@300;400;500;600&display=swap');
           body {
             margin: 0;
             padding: 0;
@@ -72,7 +71,7 @@ function wrapEmailHtml(content: string): string {
             
             <!-- Brand Header -->
             <div style="padding: 30px 30px 20px 30px; text-align: center; border-bottom: 1px solid rgba(20, 51, 31, 0.05);">
-              <span style="font-family: 'Fredoka', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 700; color: #2C8A4B; letter-spacing: -0.02em;">de—escape<span style="color: #C8F135;">.</span></span>
+              <span style="font-family: 'Nunito', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 900; color: #1a7138; letter-spacing: 0.2px;">De-escape</span>
               <div style="font-size: 9px; text-transform: uppercase; tracking-widest: 0.15em; color: #8A9384; margin-top: 4px;">discover what's around you</div>
             </div>
 
@@ -93,7 +92,7 @@ function wrapEmailHtml(content: string): string {
   `;
 }
 
-interface EmailOptions {
+export interface EmailOptions {
   to: string;
   subject: string;
   templateKey: string;
@@ -105,29 +104,18 @@ interface EmailOptions {
     filename: string;
     content: string; // Plain ICS text
   };
+  bcc?: string[];
 }
 
 export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const { to, subject, templateKey, registrationId = null, eventId = null, payload, htmlContent, icsAttachment } = options;
+  const { to, subject, templateKey, registrationId = null, eventId = null, payload, htmlContent, icsAttachment, bcc } = options;
   const fullHtml = wrapEmailHtml(htmlContent);
 
-  if (SIMULATE_COMMS) {
-    console.log("=========================================");
-    console.log(`[SIMULATE OUTBOUND EMAIL]`);
-    console.log(`To: ${to}`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Template: ${templateKey}`);
-    if (icsAttachment) {
-      console.log(`Attachment: ${icsAttachment.filename} (${icsAttachment.content.length} bytes)`);
-    }
-    console.log("-----------------------------------------");
-    console.log(htmlContent.replace(/<[^>]*>/g, "").trim().substring(0, 300) + "...");
-    console.log("=========================================");
-
-    const simulatedMessageId = `simulated-${crypto.randomUUID()}`;
-    await logMessage(registrationId, eventId, to, templateKey, payload, "sent", null, simulatedMessageId);
-    return { success: true, messageId: simulatedMessageId };
-  }
+  const adminBcc = process.env.ADMIN_BCC_EMAIL || "dharmik@de-escape.in";
+  const bccAddresses = bcc || [adminBcc];
+  const filteredBcc = bccAddresses.filter(
+    (email) => email.toLowerCase().trim() !== to.toLowerCase().trim()
+  );
 
   try {
     const client = getSESClient();
@@ -167,6 +155,11 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
           RawMessage: {
             Data: Buffer.from(rawMessage),
           },
+          Source: SES_SENDER_EMAIL,
+          Destination: {
+            ToAddresses: [to],
+            BccAddresses: filteredBcc.length > 0 ? filteredBcc : undefined,
+          },
         })
       );
       messageId = response.MessageId;
@@ -177,6 +170,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
           Source: SES_SENDER_EMAIL,
           Destination: {
             ToAddresses: [to],
+            BccAddresses: filteredBcc.length > 0 ? filteredBcc : undefined,
           },
           Message: {
             Subject: {

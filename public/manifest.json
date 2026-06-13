@@ -1,0 +1,24 @@
+{
+  "name": "De-escape Events",
+  "short_name": "De-escape",
+  "description": "Discover Curated Sound Baths, Dinners, and Cycling Events.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5ECCE",
+  "theme_color": "#2C8A4B",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-2.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

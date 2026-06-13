@@ -2,7 +2,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
-const SIMULATE_COMMS = process.env.SIMULATE_COMMS === "true";
 
 // Helper to write outbound messaging log to database
 async function logMessage(
@@ -34,7 +33,7 @@ async function logMessage(
   }
 }
 
-interface TemplateOptions {
+export interface TemplateOptions {
   to: string; // phone number in E.164 (without plus sign for WhatsApp API, e.g. "919876543210")
   templateKey: string; // e.g. "approved_pass"
   metaTemplateName: string; // e.g. "approved_pass_v1"
@@ -74,18 +73,11 @@ export async function sendWhatsAppTemplate(options: TemplateOptions): Promise<{ 
     },
   };
 
-  if (SIMULATE_COMMS || !WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
-    console.log("=========================================");
-    console.log(`[SIMULATE OUTBOUND WHATSAPP TEMPLATE]`);
-    console.log(`To: ${formattedTo}`);
-    console.log(`Template Key: ${templateKey}`);
-    console.log(`Meta Template: ${metaTemplateName}`);
-    console.log(`Params: ${JSON.stringify(variables)}`);
-    console.log("=========================================");
-
-    const simulatedMessageId = `wa-simulated-${crypto.randomUUID()}`;
-    await logMessage(registrationId, eventId, to, templateKey, { variables }, "sent", null, simulatedMessageId);
-    return { success: true, messageId: simulatedMessageId };
+  if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+    const errorMsg = "WhatsApp credentials are not configured.";
+    console.error(errorMsg);
+    await logMessage(registrationId, eventId, to, templateKey, { variables }, "failed", errorMsg, null);
+    return { success: false, error: errorMsg };
   }
 
   try {
@@ -117,7 +109,7 @@ export async function sendWhatsAppTemplate(options: TemplateOptions): Promise<{ 
   }
 }
 
-interface FreeformOptions {
+export interface FreeformOptions {
   to: string;
   text: string;
   registrationId?: string | null;
@@ -139,16 +131,11 @@ export async function sendWhatsAppFreeform(options: FreeformOptions): Promise<{ 
     },
   };
 
-  if (SIMULATE_COMMS || !WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
-    console.log("=========================================");
-    console.log(`[SIMULATE OUTBOUND WHATSAPP FREEFORM]`);
-    console.log(`To: ${formattedTo}`);
-    console.log(`Text: ${text}`);
-    console.log("=========================================");
-
-    const simulatedMessageId = `wa-freeform-${crypto.randomUUID()}`;
-    await logMessage(registrationId, eventId, to, "freeform_reply", { text }, "sent", null, simulatedMessageId);
-    return { success: true, messageId: simulatedMessageId };
+  if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+    const errorMsg = "WhatsApp credentials are not configured.";
+    console.error(errorMsg);
+    await logMessage(registrationId, eventId, to, "freeform_reply", { text }, "failed", errorMsg, null);
+    return { success: false, error: errorMsg };
   }
 
   try {

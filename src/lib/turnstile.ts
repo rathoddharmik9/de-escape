@@ -1,8 +1,8 @@
 export async function verifyTurnstile(token: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) {
-    console.warn("TURNSTILE_SECRET_KEY is not set. Skipping Turnstile verification.");
-    return true; // Bypass in dev if key not configured
+    console.error("TURNSTILE_SECRET_KEY is not set. Cloudflare Turnstile verification failed.");
+    return false;
   }
 
   try {

@@ -1,8 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
 import { createClient as createAnonClient } from "@supabase/supabase-js";
 import type { Event } from "@/lib/types";
+import { cache as reactCache } from "react";
 
-// Cookie-less client for build-time contexts (generateStaticParams, generateMetadata).
+// Fallback for standalone Node.js contexts (like CLI scripts and E2E tests) where React's cache is not available.
+const cache = typeof reactCache === "function" ? reactCache : (<T extends Function>(fn: T): T => fn);
+
+// Cookie-less client for build-time contexts (generateStaticParams, generateMetadata, and public routes).
 function buildClient() {
   return createAnonClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,17 +14,18 @@ function buildClient() {
   );
 }
 
-export async function getPublishedEventSlugs(): Promise<string[]> {
+export const getPublishedEventSlugs = cache(async (): Promise<string[]> => {
   const supabase = buildClient();
   const { data, error } = await supabase
     .from("events")
     .select("slug")
-    .in("status", ["published", "sold_out"]);
+    .in("status", ["published", "sold_out"])
+    .gt("end_at", new Date().toISOString());
   if (error) throw new Error(`getPublishedEventSlugs: ${error.message}`);
   return (data ?? []).map((r: { slug: string }) => r.slug);
-}
+});
 
-export async function getEventBySlugBuild(slug: string): Promise<Event | null> {
+export const getEventBySlugBuild = cache(async (slug: string): Promise<Event | null> => {
   const supabase = buildClient();
   const { data, error } = await supabase
     .from("events")
@@ -33,21 +37,22 @@ export async function getEventBySlugBuild(slug: string): Promise<Event | null> {
     throw new Error(`getEventBySlugBuild: ${error.message}`);
   }
   return data as Event;
-}
+});
 
-export async function getPublishedEvents(): Promise<Event[]> {
-  const supabase = createClient();
+export const getPublishedEvents = cache(async (): Promise<Event[]> => {
+  const supabase = buildClient();
   const { data, error } = await supabase
     .from("events")
     .select("*")
     .in("status", ["published", "sold_out"])
+    .gt("end_at", new Date().toISOString())
     .order("start_at", { ascending: true });
   if (error) throw new Error(`getPublishedEvents: ${error.message}`);
   return (data ?? []) as Event[];
-}
+});
 
-export async function getEventBySlug(slug: string): Promise<Event | null> {
-  const supabase = createClient();
+export const getEventBySlug = cache(async (slug: string): Promise<Event | null> => {
+  const supabase = buildClient();
   const { data, error } = await supabase
     .from("events")
     .select("*")
@@ -58,9 +63,10 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
     throw new Error(`getEventBySlug: ${error.message}`);
   }
   return data as Event;
-}
+});
 
-export async function getFeaturedEvent(): Promise<Event | null> {
+export const getFeaturedEvent = cache(async (): Promise<Event | null> => {
   const events = await getPublishedEvents();
   return events[0] ?? null;
-}
+});
+

@@ -4,6 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/comms/email";
 import { sendWhatsAppTemplate } from "@/lib/comms/whatsapp";
+import { revalidatePath } from "next/cache";
+
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (error) {
+    // Ignore Next.js invariant errors outside request context
+  }
+}
 
 function formatCommsDate(dateString: string): string {
   const d = new Date(dateString);
@@ -45,7 +54,8 @@ async function verifyAdminSession() {
   }
 
   // Check if admin
-  const { data: admin } = await supabase
+  const adminClient = createAdminClient();
+  const { data: admin } = await adminClient
     .from("admins")
     .select("role")
     .eq("user_id", user.id)
@@ -258,6 +268,15 @@ export async function approveRegistration(registrationId: string): Promise<Regis
       })();
     }
 
+    safeRevalidatePath("/");
+    safeRevalidatePath("/events");
+    safeRevalidatePath("/admin");
+    safeRevalidatePath("/admin/analytics");
+    safeRevalidatePath("/admin/registrations");
+    if (reg.events?.slug) {
+      safeRevalidatePath(`/events/${reg.events.slug}`);
+    }
+
     return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "An unexpected error occurred.";
@@ -337,6 +356,15 @@ export async function rejectRegistration(registrationId: string, reason: string)
           console.error("Error sending rejection comms:", commsErr);
         }
       })();
+    }
+
+    safeRevalidatePath("/");
+    safeRevalidatePath("/events");
+    safeRevalidatePath("/admin");
+    safeRevalidatePath("/admin/analytics");
+    safeRevalidatePath("/admin/registrations");
+    if (reg.events?.slug) {
+      safeRevalidatePath(`/events/${reg.events.slug}`);
     }
 
     return { success: true };
@@ -430,6 +458,15 @@ export async function refundRegistration(registrationId: string): Promise<Regist
       })();
     }
 
+    safeRevalidatePath("/");
+    safeRevalidatePath("/events");
+    safeRevalidatePath("/admin");
+    safeRevalidatePath("/admin/analytics");
+    safeRevalidatePath("/admin/registrations");
+    if (reg.events?.slug) {
+      safeRevalidatePath(`/events/${reg.events.slug}`);
+    }
+
     return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "An unexpected error occurred.";
@@ -444,7 +481,7 @@ export async function markAttendance(registrationId: string, attended: boolean):
 
     const { data: reg } = await supabase
       .from("registrations")
-      .select("status")
+      .select("status, events(slug)")
       .eq("id", registrationId)
       .single();
 
@@ -465,6 +502,15 @@ export async function markAttendance(registrationId: string, attended: boolean):
     }
 
     await writeAuditLog(user.id, "registration.mark_attendance", "registrations", registrationId, { status: reg.status }, { status });
+
+    safeRevalidatePath("/");
+    safeRevalidatePath("/events");
+    safeRevalidatePath("/admin");
+    safeRevalidatePath("/admin/analytics");
+    safeRevalidatePath("/admin/registrations");
+    if (reg.events && (reg.events as any).slug) {
+      safeRevalidatePath(`/events/${(reg.events as any).slug}`);
+    }
 
     return { success: true };
   } catch (err: unknown) {

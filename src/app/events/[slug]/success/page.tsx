@@ -5,11 +5,16 @@ import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
 import PublicShell from "@/components/layout/PublicShell";
 import MagneticButton from "@/components/motion/MagneticButton";
+import { useSessionStore } from "@/lib/store/useSessionStore";
 
 function SuccessContent() {
   const params = useSearchParams();
-  const name = params.get("name") || "Explorer";
-  const regId = `DE-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const lastReg = useSessionStore((state) => state.lastRegistration);
+  
+  const name = lastReg?.fullName || params.get("name") || "Explorer";
+  const regId = lastReg?.registrationId || params.get("reg") || `DE-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const passcode = lastReg?.passCode;
+
   const checkRef = useRef<SVGCircleElement>(null);
   const burstRef = useRef<HTMLDivElement>(null);
 
@@ -87,11 +92,30 @@ function SuccessContent() {
         Your registration is in. Watch your WhatsApp and email — we&apos;ll confirm once payment is verified and you&apos;re approved.
       </p>
 
-      {/* Registration ID */}
-      <div className="p-5 rounded-2xl mb-8 inline-block surface">
-        <div className="text-[11px] uppercase tracking-widest text-[var(--ink-mute)] mb-2">Registration ID</div>
-        <div className="font-mono text-2xl text-[var(--green-ink)] tracking-widest">{regId}</div>
-        <div className="text-xs text-[var(--ink-mute)] mt-2">Save this — you may need it for support</div>
+      {/* Registration ID & Passcode Info */}
+      <div className="p-6 rounded-3xl mb-8 inline-block surface border border-[var(--glass-border)] min-w-[280px]">
+        <div className="mb-4">
+          <div className="text-[10px] uppercase tracking-widest text-[var(--ink-mute)] mb-1">Registration ID</div>
+          <div className="font-mono text-xl text-[var(--green-ink)] tracking-widest">{regId}</div>
+        </div>
+        
+        {passcode && (
+          <div className="pt-4 border-t border-[var(--surface-border)]">
+            <div className="text-[10px] uppercase tracking-widest text-[var(--ink-mute)] mb-1">Your Pass Code</div>
+            <div className="font-mono text-lg text-[var(--green)] font-semibold tracking-wider mb-3">{passcode}</div>
+            <Link
+              href={`/p/${passcode}`}
+              data-cursor="Pass"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-[var(--green)] text-[var(--cream)] hover:bg-[var(--green-deep)] transition-all duration-300"
+            >
+              View Ticket Pass →
+            </Link>
+          </div>
+        )}
+        
+        {!passcode && (
+          <div className="text-xs text-[var(--ink-mute)] mt-2">Save this ID — you may need it for support</div>
+        )}
       </div>
 
       {/* Next steps */}

@@ -13,7 +13,6 @@ const FILTERS = [
   { label: "Run Clubs", value: "run" },
   { label: "Book Circles", value: "book_circle" },
   { label: "Cycling", value: "cycling" },
-  { label: "Free", value: "free" },
 ];
 
 export default function EventsBrowser({ events }: { events: Event[] }) {
@@ -25,8 +24,6 @@ export default function EventsBrowser({ events }: { events: Event[] }) {
       const matchCat =
         activeFilter === "all"
           ? true
-          : activeFilter === "free"
-          ? e.price_paise === 0
           : e.category === activeFilter;
       const matchSearch =
         search === "" ||

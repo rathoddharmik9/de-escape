@@ -36,8 +36,8 @@ export default function NewEventPage() {
     venueAddress: "",
     venueMapUrl: "",
     capacity: "20",
-    priceInr: "0",
-    paymentMode: "free",
+    priceInr: "499",
+    paymentMode: "manual_upi",
     upiId: "",
     refundPolicy: "Full refund up to 48 hours before the event. No refunds within 48 hours.",
   });
@@ -109,7 +109,7 @@ export default function NewEventPage() {
     if (isNaN(cap) || cap < 1) errs.capacity = "Capacity must be at least 1";
     
     const price = parseFloat(form.priceInr);
-    if (isNaN(price) || price < 0) errs.priceInr = "Price must be 0 or higher";
+    if (isNaN(price) || price <= 0) errs.priceInr = "Price must be greater than 0";
     
     if (form.paymentMode === "manual_upi" && !form.upiId.trim()) {
       errs.upiId = "UPI ID required for UPI payments";
@@ -267,7 +267,6 @@ export default function NewEventPage() {
             <div>
               <label className="block text-xs uppercase tracking-[0.05em] text-[var(--ink-mute)] mb-1">Payment Mode</label>
               <select value={form.paymentMode} onChange={(e) => set("paymentMode", e.target.value)} className={`${inputClass("paymentMode")} appearance-none`}>
-                <option value="free" className="bg-[var(--cream)]">Free Event</option>
                 <option value="manual_upi" className="bg-[var(--cream)]">Manual UPI Transfer</option>
                 <option value="razorpay" className="bg-[var(--cream)]">Razorpay Checkout</option>
               </select>

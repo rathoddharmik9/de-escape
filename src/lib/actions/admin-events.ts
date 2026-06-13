@@ -3,6 +3,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
+
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (error) {
+    // Ignore Next.js invariant errors outside request context
+  }
+}
 
 const eventInputSchema = z.object({
   slug: z.string().min(3).regex(/^[a-z0-9-]+$/, "Slug must be lowercase, numbers, and dashes only"),
@@ -17,8 +26,8 @@ const eventInputSchema = z.object({
   venueAddress: z.string().min(1),
   venueMapUrl: z.string().url().or(z.literal("")),
   capacity: z.number().int().min(1),
-  pricePaise: z.number().int().min(0),
-  paymentMode: z.enum(["razorpay", "manual_upi", "free"]),
+  pricePaise: z.number().int().min(1),
+  paymentMode: z.enum(["razorpay", "manual_upi"]),
   upiId: z.string().optional(),
   refundPolicy: z.string().min(1),
 });
@@ -31,7 +40,8 @@ async function verifyAdminSession() {
   }
 
   // Check if admin
-  const { data: admin } = await supabase
+  const adminClient = createAdminClient();
+  const { data: admin } = await adminClient
     .from("admins")
     .select("role")
     .eq("user_id", user.id)
@@ -130,6 +140,10 @@ export async function createEvent(rawInput: unknown): Promise<ActionState> {
 
     await writeAuditLog(user.id, "event.create", "events", eventId, null, insertPayload);
 
+    safeRevalidatePath("/");
+    safeRevalidatePath("/events");
+    safeRevalidatePath(`/events/${input.slug}`);
+
     return { success: true, eventId };
   } catch (err: unknown) {
     console.error("createEvent general error:", err);
@@ -192,6 +206,13 @@ export async function updateEvent(eventId: string, rawInput: unknown): Promise<A
 
     await writeAuditLog(user.id, "event.update", "events", eventId, oldEvent, updatePayload);
 
+    safeRevalidatePath("/");
+    safeRevalidatePath("/events");
+    safeRevalidatePath(`/events/${input.slug}`);
+    if (oldEvent.slug !== input.slug) {
+      safeRevalidatePath(`/events/${oldEvent.slug}`);
+    }
+
     return { success: true, eventId };
   } catch (err: unknown) {
     console.error("updateEvent general error:", err);
@@ -205,7 +226,7 @@ export async function publishEvent(eventId: string): Promise<ActionState> {
     const user = await verifyAdminSession();
     const supabase = createAdminClient();
 
-    const { data: event } = await supabase.from("events").select("status").eq("id", eventId).single();
+    const { data: event } = await supabase.from("events").select("slug, status").eq("id", eventId).single();
     if (!event) return { success: false, message: "Event not found." };
 
     const { error } = await supabase.from("events").update({ status: "published" }).eq("id", eventId);
@@ -215,6 +236,10 @@ export async function publishEvent(eventId: string): Promise<ActionState> {
     }
 
     await writeAuditLog(user.id, "event.publish", "events", eventId, { status: event.status }, { status: "published" });
+
+    safeRevalidatePath("/");
+    safeRevalidatePath("/events");
+    safeRevalidatePath(`/events/${event.slug}`);
 
     return { success: true };
   } catch (err: unknown) {
@@ -228,12 +253,12 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
     const user = await verifyAdminSession();
     const supabase = createAdminClient();
 
-    const { data: event } = await supabase.from("events").select("status").eq("id", eventId).single();
+    const { data: event } = await supabase.from("events").select("slug, status, description").eq("id", eventId).single();
     if (!event) return { success: false, message: "Event not found." };
 
     const { error } = await supabase
       .from("events")
-      .update({ status: "cancelled", description: `[CANCELLED: ${reason}] \n\n` + event.status })
+      .update({ status: "cancelled", description: `[CANCELLED: ${reason}] \n\n` + (event.description || '') })
       .eq("id", eventId);
 
     if (error) {
@@ -241,6 +266,12 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
     }
 
     await writeAuditLog(user.id, "event.cancel", "events", eventId, { status: event.status }, { status: "cancelled", reason });
+
+    safeRevalidatePath("/");
+    safeRevalidatePath("/events");
+    if (event?.slug) {
+      safeRevalidatePath(`/events/${event.slug}`);
+    }
 
     return { success: true };
   } catch (err: unknown) {
@@ -254,7 +285,7 @@ export async function updateCustomFields(eventId: string, customFields: unknown[
     const user = await verifyAdminSession();
     const supabase = createAdminClient();
 
-    const { data: event } = await supabase.from("events").select("custom_fields").eq("id", eventId).single();
+    const { data: event } = await supabase.from("events").select("slug, custom_fields").eq("id", eventId).single();
     if (!event) return { success: false, message: "Event not found." };
 
     // Update custom fields jsonb column
@@ -275,6 +306,12 @@ export async function updateCustomFields(eventId: string, customFields: unknown[
       { custom_fields: event.custom_fields },
       { custom_fields: customFields }
     );
+
+    safeRevalidatePath("/");
+    safeRevalidatePath("/events");
+    if (event?.slug) {
+      safeRevalidatePath(`/events/${event.slug}`);
+    }
 
     return { success: true };
   } catch (err: unknown) {

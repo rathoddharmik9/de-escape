@@ -161,6 +161,12 @@ export default function EventDetailsContainer({ event, registrations }: Containe
 
         {/* Primary status change buttons */}
         <div className="flex gap-2">
+          <Link
+            href={`/admin/events/${event.id}/edit`}
+            className="px-5 py-2.5 rounded-full text-xs font-semibold surface border border-[var(--surface-border)] hover:bg-[var(--cream-deep)]/30 transition-all text-[var(--green-ink)] flex items-center"
+          >
+            Edit Event
+          </Link>
           {event.status === "draft" && (
             <button
               onClick={handlePublish}

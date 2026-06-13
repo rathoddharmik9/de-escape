@@ -1,6 +1,6 @@
 export type EventCategory = "sound_bath" | "supper" | "run" | "book_circle" | "cycling" | "other";
 export type EventStatus = "draft" | "published" | "sold_out" | "cancelled" | "past";
-export type PaymentMode = "razorpay" | "manual_upi" | "free";
+export type PaymentMode = "razorpay" | "manual_upi";
 export type RegistrationStatus =
   | "pending"
   | "awaiting_payment"
@@ -10,6 +10,14 @@ export type RegistrationStatus =
   | "refunded"
   | "attended"
   | "no_show";
+
+export interface CustomField {
+  key: string;
+  label: string;
+  type: string;
+  required: boolean;
+  options?: string[];
+}
 
 export interface Event {
   id: string;
@@ -31,6 +39,10 @@ export interface Event {
   upi_id?: string;
   refund_policy: string;
   status: EventStatus;
+  custom_fields?: CustomField[];
+  community_group_invite?: string;
+  cancelled_reason?: string;
+  upi_qr_image_url?: string;
 }
 
 export interface Registration {
@@ -49,4 +61,15 @@ export interface Registration {
   amount_paise: number;
   status: RegistrationStatus;
   created_at: string;
+  custom_answers?: Record<string, unknown>;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
+  screenshot_url?: string;
+  consent_whatsapp?: boolean;
+  rejected_reason?: string;
+  approved_at?: string;
+  approved_by?: string;
+  attended_at?: string;
 }
+

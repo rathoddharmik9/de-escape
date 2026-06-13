@@ -16,6 +16,8 @@ import {
 } from "@/lib/mock-data";
 import { getEventBySlug, getEventBySlugBuild, getPublishedEventSlugs } from "@/lib/data/events";
 
+export const revalidate = 60;
+
 interface Props {
   params: { slug: string };
 }

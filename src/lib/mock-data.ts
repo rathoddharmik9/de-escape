@@ -1,5 +1,7 @@
-import type { Event, Registration } from "./types";
+import type { Event } from "./types";
 
+// NOTE: EVENTS is retained only for DB seeding purposes (scripts/seed.ts).
+// It is NOT used at runtime by public or administrative page components.
 export const EVENTS: Event[] = [
   {
     id: "evt-001",
@@ -88,26 +90,6 @@ export const EVENTS: Event[] = [
     status: "published",
   },
   {
-    id: "evt-005",
-    slug: "first-light-trail-run",
-    title: "First-Light Trail Run, Sanjay Gandhi",
-    tagline: "5am start. Coffee at the end. Worth it.",
-    description: `<p>A gentle 8km trail run through Sanjay Gandhi National Park at sunrise. No pace pressure. Just breath, forest, and the satisfaction of having started your day with trees.</p>`,
-    cover_image_url: "",
-    category: "run",
-    start_at: "2026-06-07T05:30:00+05:30",
-    end_at: "2026-06-07T08:00:00+05:30",
-    venue_name: "SGNP North Gate",
-    venue_address: "Sanjay Gandhi National Park, Borivali East, Mumbai",
-    venue_map_url: "https://maps.google.com/?q=Sanjay+Gandhi+National+Park",
-    capacity: 30,
-    registered_count: 22,
-    price_paise: 0,
-    payment_mode: "free",
-    refund_policy: "Free event — no payment required.",
-    status: "published",
-  },
-  {
     id: "evt-006",
     slug: "quiet-poetry-candles-only",
     title: "Quiet Poetry, Candles Only",
@@ -130,24 +112,6 @@ export const EVENTS: Event[] = [
   },
 ];
 
-export const MOCK_REGISTRATIONS: Registration[] = [
-  {
-    id: "reg-001",
-    pass_code: "MN7K2P",
-    event_id: "evt-001",
-    full_name: "Priya Sharma",
-    phone: "+919876543210",
-    email: "priya@example.com",
-    age: 27,
-    city: "Mumbai",
-    instagram: "@priyacycles",
-    heard_from: "Instagram",
-    payment_mode: "razorpay",
-    amount_paise: 59900,
-    status: "approved",
-    created_at: "2026-06-04T10:23:00+05:30",
-  },
-];
 
 export const CATEGORY_LABELS: Record<string, string> = {
   sound_bath: "Sound Bath",

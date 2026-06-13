@@ -7,7 +7,9 @@ import Reveal from "@/components/motion/Reveal";
 import MagneticButton from "@/components/motion/MagneticButton";
 import TiltCard from "@/components/motion/TiltCard";
 import { formatTime, seatsLeft } from "@/lib/mock-data";
-import { getPublishedEvents, getFeaturedEvent } from "@/lib/data/events";
+import { getPublishedEvents } from "@/lib/data/events";
+
+export const revalidate = 60;
 
 const limeGradientText = {
   background: "linear-gradient(90deg,#2C8A4B 0%,#A9CE1E 60%,#C8F135 100%)",
@@ -18,8 +20,7 @@ const limeGradientText = {
 
 export default async function HomePage() {
   const upcoming = await getPublishedEvents();
-  const featuredEvent = await getFeaturedEvent();
-  if (!featuredEvent) return null;
+  const featuredEvent = upcoming[0] ?? null;
 
   return (
     <PublicShell initialScene="dawn">
@@ -118,72 +119,105 @@ export default async function HomePage() {
 
           {/* Side featured-event card */}
           <TiltCard max={7}>
-            <aside
-              id="hero-card"
-              className="surface rounded-3xl p-6 opacity-0"
-              style={{ transform: "translateY(40px)" }}
-              aria-label="Featured event"
-            >
-              <div className="text-[11px] uppercase tracking-[0.15em] text-[var(--ink-mute)] mb-4">
-                Next near you
-              </div>
-
-              <div className="flex gap-4 pb-5 border-b border-[var(--surface-border)]">
-                <div className="w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={featuredEvent.cover_image_url}
-                    alt={featuredEvent.title}
-                    className="w-full h-full object-cover"
-                  />
+            {featuredEvent ? (
+              <aside
+                id="hero-card"
+                className="surface rounded-3xl p-6 opacity-0"
+                style={{ transform: "translateY(40px)" }}
+                aria-label="Featured event"
+              >
+                <div className="text-[11px] uppercase tracking-[0.15em] text-[var(--ink-mute)] mb-4">
+                  Next near you
                 </div>
-                <div>
-                  <div className="font-display text-[19px] leading-tight tracking-tight text-[var(--green-ink)]">
-                    {featuredEvent.title}
+
+                <div className="flex gap-4 pb-5 border-b border-[var(--surface-border)]">
+                  <div className="w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={featuredEvent.cover_image_url}
+                      alt={featuredEvent.title}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                  <div className="text-xs text-[var(--ink-dim)] mt-1">
-                    {featuredEvent.venue_name} · {formatTime(featuredEvent.start_at)}
+                  <div>
+                    <div className="font-display text-[19px] leading-tight tracking-tight text-[var(--green-ink)]">
+                      {featuredEvent.title}
+                    </div>
+                    <div className="text-xs text-[var(--ink-dim)] mt-1">
+                      {featuredEvent.venue_name} · {formatTime(featuredEvent.start_at)}
+                    </div>
+                    <span
+                      className="inline-block mt-2 text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full text-[var(--green-ink)]"
+                      style={{ background: "rgba(200,241,53,0.35)", border: "1px solid var(--lime-deep)" }}
+                    >
+                      Tonight
+                    </span>
                   </div>
-                  <span
-                    className="inline-block mt-2 text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full text-[var(--green-ink)]"
-                    style={{ background: "rgba(200,241,53,0.35)", border: "1px solid var(--lime-deep)" }}
-                  >
-                    Tonight
+                </div>
+
+                <div
+                  id="hero-countdown"
+                  className="mt-5 grid grid-cols-4 gap-2 text-center"
+                  data-target={featuredEvent.start_at}
+                >
+                  {["Days", "Hrs", "Min", "Sec"].map((unit, idx) => (
+                    <div key={unit} className="rounded-xl py-2.5 px-2" style={{ background: "var(--cream-deep)" }}>
+                      <div className="font-display text-xl text-[var(--green-ink)] countdown-num" data-cd-idx={idx}>--</div>
+                      <div className="text-[10px] uppercase tracking-widest text-[var(--ink-mute)] mt-1">
+                        {unit}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 flex justify-between items-center pt-4 border-t border-[var(--surface-border)] text-xs text-[var(--ink-dim)]">
+                  <span>Hosted by <strong className="text-[var(--green-ink)] font-medium">De-escape</strong></span>
+                  <span>
+                    <strong className="text-[var(--green-ink)] font-medium">{seatsLeft(featuredEvent)}</strong> seats left
                   </span>
                 </div>
-              </div>
 
-              <div
-                id="hero-countdown"
-                className="mt-5 grid grid-cols-4 gap-2 text-center"
-                data-target={featuredEvent.start_at}
+                <Link
+                  href={`/events/${featuredEvent.slug}`}
+                  data-cursor="Reserve"
+                  className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium transition-all duration-300 hover:-translate-y-0.5"
+                  style={{ background: "var(--green)", color: "var(--cream)" }}
+                >
+                  Reserve seat →
+                </Link>
+              </aside>
+            ) : (
+              <aside
+                id="hero-card"
+                className="surface rounded-3xl p-6 opacity-0 flex flex-col justify-between min-h-[340px]"
+                style={{ transform: "translateY(40px)" }}
+                aria-label="No upcoming events"
               >
-                {["Days", "Hrs", "Min", "Sec"].map((unit, idx) => (
-                  <div key={unit} className="rounded-xl py-2.5 px-2" style={{ background: "var(--cream-deep)" }}>
-                    <div className="font-display text-xl text-[var(--green-ink)] countdown-num" data-cd-idx={idx}>--</div>
-                    <div className="text-[10px] uppercase tracking-widest text-[var(--ink-mute)] mt-1">
-                      {unit}
-                    </div>
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.15em] text-[var(--ink-mute)] mb-4">
+                    Next escape
                   </div>
-                ))}
-              </div>
+                  <div className="flex flex-col items-center text-center py-6">
+                    <span className="text-4xl mb-4 animate-pulse">⌬</span>
+                    <h4 className="font-display text-lg text-[var(--green-ink)] font-medium leading-snug">
+                      New escapes are cooking
+                    </h4>
+                    <p className="text-xs text-[var(--ink-dim)] mt-2 leading-relaxed px-2">
+                      Our next cohort of offline experiences is being curated. Sign up to get notified first.
+                    </p>
+                  </div>
+                </div>
 
-              <div className="mt-5 flex justify-between items-center pt-4 border-t border-[var(--surface-border)] text-xs text-[var(--ink-dim)]">
-                <span>Hosted by <strong className="text-[var(--green-ink)] font-medium">De-escape</strong></span>
-                <span>
-                  <strong className="text-[var(--green-ink)] font-medium">{seatsLeft(featuredEvent)}</strong> seats left
-                </span>
-              </div>
-
-              <Link
-                href={`/events/${featuredEvent.slug}`}
-                data-cursor="Reserve"
-                className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium transition-all duration-300 hover:-translate-y-0.5"
-                style={{ background: "var(--green)", color: "var(--cream)" }}
-              >
-                Reserve seat →
-              </Link>
-            </aside>
+                <Link
+                  href="/contact"
+                  data-cursor="Notify Me"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 mt-auto"
+                  style={{ background: "var(--green)", color: "var(--cream)" }}
+                >
+                  Get notified →
+                </Link>
+              </aside>
+            )}
           </TiltCard>
         </div>
       </section>

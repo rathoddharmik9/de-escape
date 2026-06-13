@@ -35,8 +35,26 @@ export default function PassCard({ registration, event }: PassCardProps) {
               aria-hidden="true"
             />
             <div className="relative">
-              <div className="text-xs uppercase tracking-[0.2em] text-[var(--green)] mb-3 font-display font-semibold">
-                de—escape<span className="text-[var(--lime-deep)]">.</span>
+              <div className="h-6 flex justify-center mb-3">
+                <svg viewBox="0 0 170 50" className="h-full w-auto overflow-visible">
+                  <text
+                    x="85"
+                    y="38"
+                    textAnchor="middle"
+                    style={{
+                      fontFamily: "var(--font-logo), sans-serif",
+                      fontSize: "36px",
+                      fontWeight: 900,
+                      fill: "var(--green)",
+                      stroke: "var(--green)",
+                      strokeWidth: "1.2px",
+                      strokeLinejoin: "round",
+                      letterSpacing: "0.2px",
+                    }}
+                  >
+                    De-escape
+                  </text>
+                </svg>
               </div>
               <div className="text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-5">Event Pass</div>
               <h1 className="font-display text-2xl text-[var(--green-ink)] leading-tight tracking-tight mb-1">
