@@ -614,9 +614,9 @@ export default function RegistrationForm({ event }: FormProps) {
 
             <p className="text-center text-[11px] text-[var(--ink-mute)]">
               By submitting, you agree to our{" "}
-              <Link href="/terms" className="underline hover:text-[var(--green)]">Terms</Link>
-              {" "}and{" "}
-              <Link href="/refund-policy" className="underline hover:text-[var(--green)]">Refund Policy</Link>.
+              <Link href="/terms" className="underline hover:text-[var(--green)]">Terms</Link>.
+              {/* {" "}and{" "}
+              <Link href="/refund-policy" className="underline hover:text-[var(--green)]">Refund Policy</Link>. */}
             </p>
           </form>
         </div>

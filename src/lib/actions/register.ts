@@ -119,13 +119,15 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       };
     }
 
-    // 4. Check double registration by phone for this event.
-    // Multiple attendees may share one email address, so email is not used as a duplicate key.
+    // 4. Check exact duplicate registration for this event.
+    // Friends/family may share a phone or email, so shared contact details alone must not block a new attendee.
     const { data: existingReg } = await supabase
       .from("registrations")
       .select("id, pass_code, status")
       .eq("event_id", eventId)
+      .eq("full_name", fullName)
       .eq("phone", normalizedPhone)
+      .eq("email", normalizedEmail)
       .limit(1)
       .maybeSingle();
 

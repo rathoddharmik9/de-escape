@@ -55,11 +55,11 @@ export type ActionState = {
 
 const DEFAULT_SETTINGS: Record<string, string> = {
   ses_sender_email: "De-escape <noreply@de-escape.in>",
-  whatsapp_group_invite_link: "https://chat.whatsapp.com/example",
-  community_whatsapp_link: "https://chat.whatsapp.com/example",
+  whatsapp_group_invite_link: "https://chat.whatsapp.com/KttOYHKOaXkHo8votUAXxz?mode=gi_t",
+  community_whatsapp_link: "https://chat.whatsapp.com/KttOYHKOaXkHo8votUAXxz?mode=gi_t",
   instagram_url: "https://instagram.com/de_escape",
   facebook_url: "https://facebook.com/deescape",
-  footer_whatsapp_url: "https://chat.whatsapp.com/example",
+  footer_whatsapp_url: "https://chat.whatsapp.com/KttOYHKOaXkHo8votUAXxz?mode=gi_t",
   privacy_url: "/privacy",
   terms_url: "/terms",
   refund_policy_url: "/refund-policy",

@@ -373,10 +373,10 @@ export default function NewEventPage() {
         </div>
 
         {/* Refund Policy */}
-        <div>
+        {/* <div>
           <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2 font-medium">Refund Policy</label>
           <input type="text" value={form.refundPolicy} onChange={(e) => set("refundPolicy", e.target.value)} className={inputClass("refundPolicy")} />
-        </div>
+        </div> */}
 
         {errors.submit && <div className="p-4 rounded-xl text-xs text-[var(--danger)] border border-[rgba(179,58,42,0.3)] bg-[rgba(179,58,42,0.05)]">{errors.submit}</div>}
 

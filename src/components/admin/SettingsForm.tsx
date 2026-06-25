@@ -166,7 +166,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
             ["footer_whatsapp_url", "Footer WhatsApp URL", "https://chat.whatsapp.com/..."],
             ["privacy_url", "Privacy Link", "/privacy"],
             ["terms_url", "Terms Link", "/terms"],
-            ["refund_policy_url", "Refund Policy Link", "/refund-policy"],
+            // ["refund_policy_url", "Refund Policy Link", "/refund-policy"],
             ["contact_url", "Contact Link", "/contact"],
           ].map(([key, label, placeholder]) => (
             <div key={key}>
@@ -192,7 +192,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           Ticket & Refund Policies
         </h2>
 
-        <div>
+        {/* <div>
           <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2 font-medium">
             Default Cancellation & Refund Policy
           </label>
@@ -207,7 +207,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
           <span className="text-[10px] text-[var(--ink-mute)] mt-1.5 block">
             This text serves as the default policy template shown to attendees when registering for new events.
           </span>
-        </div>
+        </div> */}
       </div>
 
       <button

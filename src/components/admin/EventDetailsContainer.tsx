@@ -481,25 +481,23 @@ export default function EventDetailsContainer({ event, registrations, galleryIma
                     <div className="text-xs text-[var(--ink-mute)] mt-0.5">{reg.email} · {reg.phone}</div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span
-                      className="text-[9px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded-full"
-                      style={{
-                        background:
-                          reg.status === "approved"
-                            ? "rgba(46,122,76,0.10)"
-                            : reg.status === "awaiting_verification"
-                            ? "rgba(199,126,26,0.10)"
-                            : "rgba(179,58,42,0.10)",
-                        color:
-                          reg.status === "approved"
-                            ? "var(--ok)"
-                            : reg.status === "awaiting_verification"
-                            ? "var(--warn)"
-                            : "var(--danger)",
-                      }}
-                    >
-                      {reg.status.replace("_", " ")}
-                    </span>
+                    {reg.status !== "awaiting_verification" && (
+                      <span
+                        className="text-[9px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded-full"
+                        style={{
+                          background:
+                            reg.status === "approved"
+                              ? "rgba(46,122,76,0.10)"
+                              : "rgba(179,58,42,0.10)",
+                          color:
+                            reg.status === "approved"
+                              ? "var(--ok)"
+                              : "var(--danger)",
+                        }}
+                      >
+                        {reg.status.replace("_", " ")}
+                      </span>
+                    )}
                     <span className="text-xs text-[var(--ink-mute)] font-mono">{reg.pass_code}</span>
                     <span className="text-xs text-[var(--ink-mute)]">→</span>
                   </div>

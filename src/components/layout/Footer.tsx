@@ -40,7 +40,7 @@ export default function Footer({ settings = {} }: { settings?: Record<string, st
   const links = [
     { label: "Privacy", href: settings.privacy_url || "/privacy" },
     { label: "Terms", href: settings.terms_url || "/terms" },
-    { label: "Refund Policy", href: settings.refund_policy_url || "/refund-policy" },
+    // { label: "Refund Policy", href: settings.refund_policy_url || "/refund-policy" },
     { label: "Contact", href: settings.contact_url || "/contact" },
   ];
 

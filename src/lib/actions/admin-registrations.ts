@@ -170,7 +170,7 @@ export async function approveRegistration(registrationId: string): Promise<Regis
             .select("value")
             .eq("key", "whatsapp_group_invite_link")
             .maybeSingle();
-          const groupInviteLink = groupSetting?.value || "https://chat.whatsapp.com/example";
+          const groupInviteLink = groupSetting?.value || "https://chat.whatsapp.com/KttOYHKOaXkHo8votUAXxz?mode=gi_t";
 
           // Send WhatsApp
           const { data: templateData } = await supabase
@@ -212,7 +212,7 @@ export async function approveRegistration(registrationId: string): Promise<Regis
             `DTEND:${formatICSDate(event.end_at)}`,
             `SUMMARY:${escapeICS(event.title)}`,
             `LOCATION:${escapeICS(`${event.venue_name}, ${event.venue_address}`)}`,
-            `DESCRIPTION:Your De-escape Pass Code: ${reg.pass_code}\\n\\nView your pass: ${siteUrl}/p/${reg.pass_code}\\n\\nRefund Policy: ${escapeICS(event.refund_policy)}`,
+            `DESCRIPTION:Your De-escape Pass Code: ${reg.pass_code}\\n\\nView your pass: ${siteUrl}/p/${reg.pass_code}`,
             `URL:${siteUrl}/p/${reg.pass_code}`,
             "END:VEVENT",
             "END:VCALENDAR"

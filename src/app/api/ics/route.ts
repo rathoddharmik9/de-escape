@@ -67,7 +67,7 @@ export async function GET(request: Request) {
       `DTEND:${formatICSDate(event.end_at)}`,
       `SUMMARY:${escapeICS(event.title)}`,
       `LOCATION:${escapeICS(`${event.venue_name}, ${event.venue_address}`)}`,
-      `DESCRIPTION:Your De-escape Pass Code: ${reg.pass_code}\\n\\nView your pass: ${siteUrl}/p/${reg.pass_code}\\n\\nRefund Policy: ${escapeICS(event.refund_policy)}`,
+      `DESCRIPTION:Your De-escape Pass Code: ${reg.pass_code}\\n\\nView your pass: ${siteUrl}/p/${reg.pass_code}`,
       `URL:${siteUrl}/p/${reg.pass_code}`,
       "END:VEVENT",
       "END:VCALENDAR"

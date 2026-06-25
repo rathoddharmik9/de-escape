@@ -5,6 +5,7 @@ import CoverParallax from "@/components/events/CoverParallax";
 import EventGallery from "@/components/events/EventGallery";
 import Reveal from "@/components/motion/Reveal";
 import MagneticButton from "@/components/motion/MagneticButton";
+import ShareButton from "@/components/events/ShareButton";
 import {
   CATEGORY_LABELS,
   CATEGORY_COLORS,
@@ -158,12 +159,12 @@ export default async function EventDetailPage({ params }: Props) {
               />
             </Reveal>
 
-            <Reveal>
+            {/* <Reveal>
               <div className="mt-10 p-5 rounded-2xl surface-deep">
                 <h3 className="text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">Refund policy</h3>
                 <p className="text-sm text-[var(--ink-dim)]">{event.refund_policy}</p>
               </div>
-            </Reveal>
+            </Reveal> */}
 
             <Reveal>
               <EventGallery images={galleryImages} eventTitle={event.title} />
@@ -171,15 +172,7 @@ export default async function EventDetailPage({ params }: Props) {
 
             <div className="mt-8 flex items-center gap-4">
               <span className="text-xs uppercase tracking-widest text-[var(--ink-mute)]">Share</span>
-              {["WhatsApp", "Copy link"].map((s) => (
-                <button
-                  key={s}
-                  data-cursor="true"
-                  className="text-xs text-[var(--ink-dim)] px-3 py-1.5 rounded-full surface hover:text-[var(--green-ink)] hover:bg-[var(--cream-deep)] transition-all"
-                >
-                  {s}
-                </button>
-              ))}
+              <ShareButton />
             </div>
           </article>
 
