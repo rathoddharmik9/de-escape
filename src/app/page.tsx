@@ -54,7 +54,6 @@ export default async function HomePage() {
                 </span>
               </span>
             </h1>
-
             <p
               id="hero-subline"
               className="mt-7 text-lg leading-relaxed text-[var(--ink-dim)] max-w-[52ch] opacity-0"
