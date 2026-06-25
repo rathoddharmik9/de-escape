@@ -1,8 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import RegistrationsBrowser from "@/components/admin/RegistrationsBrowser";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function RegistrationsPage() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   const { data: registrations, error } = await supabase
     .from("registrations")

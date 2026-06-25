@@ -1,10 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0; // Dynamic rendering
 
 export default async function AdminAnalyticsPage() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   // Fetch all events
   const { data: events, error: eventsError } = await supabase

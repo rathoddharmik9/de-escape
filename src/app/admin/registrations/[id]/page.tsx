@@ -1,13 +1,16 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import RegistrationDetailsContainer from "@/components/admin/RegistrationDetailsContainer";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface Props {
   params: { id: string };
 }
 
 export default async function AdminRegistrationDetailPage({ params }: Props) {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   // 1. Fetch Registration joined with Event title & start datetime
   const { data: registration, error: regError } = await supabase

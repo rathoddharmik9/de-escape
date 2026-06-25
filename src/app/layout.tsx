@@ -5,6 +5,7 @@ import SceneCanvas from "@/components/motion/SceneCanvas";
 import CustomCursor from "@/components/motion/CustomCursor";
 import SmoothScroll from "@/components/motion/SmoothScroll";
 import PageLoaderWrapper from "@/components/layout/PageLoaderWrapper";
+import DisableServiceWorker from "@/components/layout/DisableServiceWorker";
 import "./globals.css";
 
 const fredoka = Fredoka({
@@ -65,6 +66,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
+        <DisableServiceWorker />
         <div className="grain" aria-hidden="true" />
         <SceneProvider>
           <PageLoaderWrapper />

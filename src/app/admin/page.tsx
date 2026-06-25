@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPrice, formatDate } from "@/lib/mock-data";
 import type { Event } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 // Helper to format timestamps relative to now
 function formatTimeAgo(dateString: string): string {
@@ -33,7 +36,7 @@ const ACTION_LABELS: Record<string, { label: string; type: string }> = {
 };
 
 export default async function AdminDashboard() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
   const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
   // 1. Fetch active events count

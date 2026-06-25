@@ -23,6 +23,41 @@ function safeRevalidatePath(path: string) {
   }
 }
 
+async function incrementRegisteredCount(eventId: string) {
+  const supabase = createAdminClient();
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { data: current, error: readError } = await supabase
+      .from("events")
+      .select("registered_count")
+      .eq("id", eventId)
+      .single();
+
+    if (readError || !current) {
+      return { success: false, error: readError?.message || "Event count could not be read." };
+    }
+
+    const nextCount = Number(current.registered_count ?? 0) + 1;
+    const { data: updated, error: updateError } = await supabase
+      .from("events")
+      .update({ registered_count: nextCount })
+      .eq("id", eventId)
+      .eq("registered_count", current.registered_count)
+      .select("id")
+      .maybeSingle();
+
+    if (updateError) {
+      return { success: false, error: updateError.message };
+    }
+
+    if (updated) {
+      return { success: true };
+    }
+  }
+
+  return { success: false, error: "Event count changed repeatedly during update." };
+}
+
 export type RegisterState = {
   success: boolean;
   message?: string;
@@ -84,13 +119,13 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       };
     }
 
-    // 4. Check double registration (already registered for this event)
+    // 4. Check double registration by phone for this event.
+    // Multiple attendees may share one email address, so email is not used as a duplicate key.
     const { data: existingReg } = await supabase
       .from("registrations")
       .select("id, pass_code, status")
       .eq("event_id", eventId)
       .eq("phone", normalizedPhone)
-      .eq("email", normalizedEmail)
       .limit(1)
       .maybeSingle();
 
@@ -227,13 +262,10 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       return { success: false, message: "Database registration error." };
     }
 
-    const { error: countError } = await supabase
-      .from("events")
-      .update({ registered_count: event.registered_count + 1 })
-      .eq("id", eventId);
+    const countUpdate = await incrementRegisteredCount(eventId);
 
-    if (countError) {
-      console.error("Registered count update error:", countError.message);
+    if (!countUpdate.success) {
+      console.error("Registered count update error:", countUpdate.error);
     }
 
     safeRevalidatePath("/");

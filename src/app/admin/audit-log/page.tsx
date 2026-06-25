@@ -1,8 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import AuditLogsBrowser from "@/components/admin/AuditLogsBrowser";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AuditLogPage() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   // 1. Fetch recent 100 audit logs
   const { data: logs, error: logsError } = await supabase

@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { formatPrice, formatDate, seatsLeft, CATEGORY_LABELS } from "@/lib/mock-data";
 import type { Event } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const PAGE_SIZE = 12;
 
@@ -22,7 +25,7 @@ export default async function AdminEventsPage({
 }: {
   searchParams?: { page?: string };
 }) {
-  const supabase = createClient();
+  const supabase = createAdminClient();
   const requestedPage = Number(searchParams?.page ?? "1");
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.floor(requestedPage) : 1;
   const from = (currentPage - 1) * PAGE_SIZE;

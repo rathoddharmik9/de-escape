@@ -16,7 +16,8 @@ import {
 } from "@/lib/mock-data";
 import { getEventBySlug, getEventBySlugBuild, getEventGalleryImages, getPublishedEventSlugs } from "@/lib/data/events";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface Props {
   params: { slug: string };

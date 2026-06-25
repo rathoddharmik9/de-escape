@@ -1,14 +1,17 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { notFound } from "next/navigation";
 import EventDetailsContainer from "@/components/admin/EventDetailsContainer";
 import type { Event, EventGalleryImage, Registration } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface Props {
   params: { id: string };
 }
 
 export default async function AdminEventDetailPage({ params }: Props) {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   // 1. Fetch Event
   const { data: event, error: eventError } = await supabase

@@ -1,6 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import InboxChat, { ChatThread } from "@/components/admin/InboxChat";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0; // Dynamic rendering
 
 interface OutboundPayload {
@@ -9,7 +10,7 @@ interface OutboundPayload {
 }
 
 export default async function AdminInboxPage() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   // 1. Fetch all registrations to match phone numbers with names
   const { data: registrations } = await supabase

@@ -8,7 +8,8 @@ import { formatDate, formatPrice, formatTime, seatsLeft } from "@/lib/mock-data"
 import { getHomeEvents, getPastEvents, getPublishedEvents } from "@/lib/data/events";
 import { getPublicAppSettings } from "@/lib/actions/admin-settings";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const limeGradientText = {
   background: "linear-gradient(90deg,#2C8A4B 0%,#A9CE1E 60%,#C8F135 100%)",

@@ -1,10 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import BroadcastForm from "@/components/admin/BroadcastForm";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0; // Dynamic rendering
 
 export default async function AdminBroadcastsPage() {
-  const supabase = createClient();
+  const supabase = createAdminClient();
 
   // 1. Fetch events for targeting
   const { data: events } = await supabase
