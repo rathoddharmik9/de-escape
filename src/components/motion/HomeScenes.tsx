@@ -34,7 +34,7 @@ export default function HomeScenes() {
 
     if (reduce) {
       gsap.set(".hero-word", { y: "0%" });
-      gsap.set("#hero-eyebrow, #hero-subline, #hero-cta, #hero-card", { opacity: 1, y: 0 });
+      gsap.set("#hero-subline, #hero-cta, #hero-card", { opacity: 1, y: 0 });
       return () => { if (interval) clearInterval(interval); };
     }
 
@@ -42,7 +42,7 @@ export default function HomeScenes() {
 
     const playHeroAnimation = () => {
       const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
-      timeline.to("#hero-eyebrow", { opacity: 1, y: 0, duration: 0.6 }, 0.2)
+      timeline
         .to(".hero-word", { y: "0%", duration: 1.0, stagger: 0.07, ease: "power4.out" }, 0.35)
         .to("#hero-subline", { opacity: 1, y: 0, duration: 0.7 }, 1.0)
         .to("#hero-cta", { opacity: 1, y: 0, duration: 0.7 }, 1.15)

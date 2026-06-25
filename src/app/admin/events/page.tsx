@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { formatPrice, formatDate, seatsLeft, CATEGORY_LABELS } from "@/lib/mock-data";
 import type { Event } from "@/lib/types";
 
+const PAGE_SIZE = 12;
+
 const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }> = {
   published: { label: "Published", bg: "rgba(46,122,76,0.10)", color: "var(--ok)" },
   draft: { label: "Draft", bg: "var(--cream-deep)", color: "var(--ink-dim)" },
@@ -11,18 +13,38 @@ const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }
   past: { label: "Past", bg: "var(--cream-deep)", color: "var(--ink-mute)" },
 };
 
-export default async function AdminEventsPage() {
+function pageHref(page: number) {
+  return `/admin/events?page=${page}`;
+}
+
+export default async function AdminEventsPage({
+  searchParams,
+}: {
+  searchParams?: { page?: string };
+}) {
   const supabase = createClient();
-  const { data: events, error } = await supabase
+  const requestedPage = Number(searchParams?.page ?? "1");
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? Math.floor(requestedPage) : 1;
+  const from = (currentPage - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  const { data: events, error, count } = await supabase
     .from("events")
-    .select("*")
-    .order("start_at", { ascending: false });
+    .select("*", { count: "exact" })
+    .order("start_at", { ascending: false })
+    .range(from, to);
 
   if (error) {
     console.error("Failed to fetch admin events:", error.message);
   }
 
   const eventsList = (events ?? []) as Event[];
+  const totalEvents = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalEvents / PAGE_SIZE));
+  const hasPrevious = currentPage > 1;
+  const hasNext = currentPage < totalPages;
+  const visibleFrom = totalEvents === 0 ? 0 : from + 1;
+  const visibleTo = Math.min(to + 1, totalEvents);
 
   return (
     <div className="max-w-[1100px]">
@@ -34,6 +56,43 @@ export default async function AdminEventsPage() {
         >
           + New event
         </Link>
+      </div>
+
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-xs text-[var(--ink-mute)] uppercase tracking-wider">
+          Showing {visibleFrom}-{visibleTo} of {totalEvents} event{totalEvents !== 1 ? "s" : ""}
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2">
+            {hasPrevious ? (
+              <Link
+                href={pageHref(currentPage - 1)}
+                className="px-3 py-1.5 rounded-full text-xs font-medium surface text-[var(--ink-dim)] hover:text-[var(--green-ink)]"
+              >
+                Previous
+              </Link>
+            ) : (
+              <span className="px-3 py-1.5 rounded-full text-xs font-medium surface text-[var(--ink-mute)] opacity-60">
+                Previous
+              </span>
+            )}
+            <span className="px-3 py-1.5 rounded-full text-xs font-medium text-[var(--green-ink)]">
+              Page {currentPage} of {totalPages}
+            </span>
+            {hasNext ? (
+              <Link
+                href={pageHref(currentPage + 1)}
+                className="px-3 py-1.5 rounded-full text-xs font-medium bg-[var(--green)] text-[var(--cream)] hover:bg-[var(--green-deep)]"
+              >
+                Next
+              </Link>
+            ) : (
+              <span className="px-3 py-1.5 rounded-full text-xs font-medium surface text-[var(--ink-mute)] opacity-60">
+                Next
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -115,6 +174,29 @@ export default async function AdminEventsPage() {
           </div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between gap-3">
+          {hasPrevious ? (
+            <Link
+              href={pageHref(currentPage - 1)}
+              className="px-4 py-2 rounded-full text-xs font-medium surface text-[var(--ink-dim)] hover:text-[var(--green-ink)]"
+            >
+              Previous page
+            </Link>
+          ) : (
+            <span />
+          )}
+          {hasNext && (
+            <Link
+              href={pageHref(currentPage + 1)}
+              className="px-4 py-2 rounded-full text-xs font-semibold bg-[var(--green)] text-[var(--cream)] hover:bg-[var(--green-deep)]"
+            >
+              Next page
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }

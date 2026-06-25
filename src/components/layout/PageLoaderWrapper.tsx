@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import PageLoader from "./PageLoader";
 
 export default function PageLoaderWrapper() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const [showLoader, setShowLoader] = useState(true);
 
   useEffect(() => {

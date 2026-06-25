@@ -1,15 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatPrice, formatDate } from "@/lib/mock-data";
-import {
-  approveRegistration,
-  rejectRegistration,
-  refundRegistration,
-  markAttendance,
-} from "@/lib/actions/admin-registrations";
 import type { PaymentMode, RegistrationStatus } from "@/lib/types";
 
 interface ExtendedRegistration {
@@ -26,8 +19,6 @@ interface ExtendedRegistration {
   notes?: string;
   custom_answers?: Record<string, unknown>;
   payment_mode: PaymentMode;
-  razorpay_order_id?: string;
-  razorpay_payment_id?: string;
   amount_paise: number;
   screenshot_url?: string;
   status: RegistrationStatus;
@@ -50,9 +41,9 @@ interface ContainerProps {
 }
 
 const STATUS_STYLES: Record<RegistrationStatus | string, { label: string; bg: string; color: string }> = {
-  pending: { label: "Pending", bg: "var(--cream-deep)", color: "var(--ink-dim)" },
+  pending: { label: "Received", bg: "var(--cream-deep)", color: "var(--ink-dim)" },
   awaiting_payment: { label: "Awaiting Payment", bg: "rgba(199,126,26,0.10)", color: "var(--warn)" },
-  awaiting_verification: { label: "Pending Review", bg: "rgba(199,126,26,0.10)", color: "var(--warn)" },
+  awaiting_verification: { label: "Received", bg: "rgba(199,126,26,0.10)", color: "var(--warn)" },
   approved: { label: "Approved", bg: "rgba(46,122,76,0.10)", color: "var(--ok)" },
   rejected: { label: "Rejected", bg: "rgba(179,58,42,0.10)", color: "var(--danger)" },
   refunded: { label: "Refunded", bg: "var(--cream-deep)", color: "var(--ink-dim)" },
@@ -61,89 +52,9 @@ const STATUS_STYLES: Record<RegistrationStatus | string, { label: string; bg: st
 };
 
 export default function RegistrationDetailsContainer({ registration, signedUrl }: ContainerProps) {
-  const router = useRouter();
-  const [processingAction, setProcessingAction] = useState<string | null>(null);
-  
-  // Rejection modal state
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  
-  // Image zoom modal state
   const [showImageZoom, setShowImageZoom] = useState(false);
 
   const statusStyle = STATUS_STYLES[registration.status] || STATUS_STYLES.pending;
-  const isLocked = processingAction !== null;
-
-  async function handleApprove() {
-    if (!confirm("Are you sure you want to approve this registration?")) return;
-    setProcessingAction("approve");
-    try {
-      const res = await approveRegistration(registration.id);
-      if (res.success) {
-        router.refresh();
-      } else {
-        alert(res.message || "Failed to approve registration.");
-      }
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "An error occurred.");
-    } finally {
-      setProcessingAction(null);
-    }
-  }
-
-  async function handleRejectSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!rejectReason.trim()) return;
-    setProcessingAction("reject");
-    try {
-      const res = await rejectRegistration(registration.id, rejectReason);
-      if (res.success) {
-        setShowRejectModal(false);
-        router.refresh();
-      } else {
-        alert(res.message || "Failed to reject registration.");
-      }
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "An error occurred.");
-    } finally {
-      setProcessingAction(null);
-    }
-  }
-
-  async function handleRefund() {
-    if (!confirm("Are you sure you want to refund this registration? This will mark the registration status as refunded and decrement the event's registration count.")) return;
-    setProcessingAction("refund");
-    try {
-      const res = await refundRegistration(registration.id);
-      if (res.success) {
-        router.refresh();
-      } else {
-        alert(res.message || "Failed to refund registration.");
-      }
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "An error occurred.");
-    } finally {
-      setProcessingAction(null);
-    }
-  }
-
-  async function handleAttendanceChange(attended: boolean) {
-    const actionLabel = attended ? "mark as attended" : "mark as no-show";
-    if (!confirm(`Are you sure you want to ${actionLabel}?`)) return;
-    setProcessingAction(attended ? "attend" : "noshow");
-    try {
-      const res = await markAttendance(registration.id, attended);
-      if (res.success) {
-        router.refresh();
-      } else {
-        alert(res.message || "Failed to update attendance status.");
-      }
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "An error occurred.");
-    } finally {
-      setProcessingAction(null);
-    }
-  }
 
   return (
     <div className="max-w-[1100px]">
@@ -176,45 +87,14 @@ export default function RegistrationDetailsContainer({ registration, signedUrl }
           </p>
         </div>
 
-        {/* Attendance status indicators & quick toggles */}
-        <div className="flex items-center gap-2">
-          {registration.status === "approved" && (
-            <>
-              <button
-                disabled={isLocked}
-                onClick={() => handleAttendanceChange(true)}
-                className="px-4 py-2 rounded-full text-xs font-semibold hover:-translate-y-0.5 transition-all bg-[var(--info)] text-white disabled:opacity-50"
-              >
-                Mark Attended
-              </button>
-              <button
-                disabled={isLocked}
-                onClick={() => handleAttendanceChange(false)}
-                className="px-4 py-2 rounded-full text-xs font-semibold surface border border-[var(--surface-border)] hover:bg-[var(--cream-deep)]/30 transition-all text-[var(--ink-dim)] disabled:opacity-50"
-              >
-                Mark No-Show
-              </button>
-            </>
-          )}
-          {registration.status === "attended" && (
-            <button
-              disabled={isLocked}
-              onClick={() => handleAttendanceChange(false)}
-              className="px-4 py-2 rounded-full text-xs font-semibold surface border border-[var(--surface-border)] hover:bg-[var(--cream-deep)]/30 transition-all text-[var(--danger)] disabled:opacity-50"
-            >
-              Change to No-Show
-            </button>
-          )}
-          {registration.status === "no_show" && (
-            <button
-              disabled={isLocked}
-              onClick={() => handleAttendanceChange(true)}
-              className="px-4 py-2 rounded-full text-xs font-semibold hover:-translate-y-0.5 transition-all bg-[var(--info)] text-white disabled:opacity-50"
-            >
-              Change to Attended
-            </button>
-          )}
-        </div>
+        <Link
+          href={`https://wa.me/${registration.phone.replace(/\D/g, "")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2 rounded-full text-xs font-semibold bg-[var(--green)] text-[var(--cream)] hover:-translate-y-0.5 transition-all"
+        >
+          Open WhatsApp
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
@@ -329,7 +209,7 @@ export default function RegistrationDetailsContainer({ registration, signedUrl }
           </div>
         </div>
 
-        {/* Right Column: Actions & Payment Info */}
+        {/* Right Column: Event & Payment Info */}
         <div className="space-y-6">
           {/* Event Information summary */}
           <div className="p-5 rounded-3xl surface">
@@ -370,23 +250,6 @@ export default function RegistrationDetailsContainer({ registration, signedUrl }
               </span>
             </div>
 
-            {registration.payment_mode === "razorpay" && (
-              <div className="space-y-2 pt-2 border-t border-[var(--surface-border)]">
-                <div>
-                  <span className="block text-[10px] text-[var(--ink-mute)] uppercase">Order ID</span>
-                  <span className="text-xs font-mono text-[var(--ink-dim)] break-all">
-                    {registration.razorpay_order_id || "—"}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-[var(--ink-mute)] uppercase">Payment ID</span>
-                  <span className="text-xs font-mono text-[var(--ink-dim)] break-all">
-                    {registration.razorpay_payment_id || "—"}
-                  </span>
-                </div>
-              </div>
-            )}
-
             {/* Manual payment screenshot */}
             {registration.payment_mode === "manual_upi" && (
               <div className="pt-2 border-t border-[var(--surface-border)]">
@@ -419,99 +282,16 @@ export default function RegistrationDetailsContainer({ registration, signedUrl }
             )}
           </div>
 
-          {/* Rejection / Approval Action buttons if pending reviewer action */}
-          {registration.status === "awaiting_verification" && (
-            <div className="p-5 rounded-3xl space-y-3 surface">
-              <h2 className="text-xs uppercase tracking-widest text-[var(--ink-mute)] font-semibold">
-                Verification Review
-              </h2>
-              <p className="text-[10px] text-[var(--ink-mute)] leading-relaxed">
-                Approve or reject this registration. Rejections require a reason which is logged.
-              </p>
-              <button
-                disabled={isLocked}
-                onClick={handleApprove}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold hover:-translate-y-0.5 transition-all bg-[var(--ok)] text-white disabled:opacity-50"
-              >
-                {processingAction === "approve" ? "Approving..." : "Approve Registration"}
-              </button>
-              <button
-                disabled={isLocked}
-                onClick={() => setShowRejectModal(true)}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold surface border border-[var(--surface-border)] hover:bg-[var(--cream-deep)]/30 transition-all text-[var(--danger)] disabled:opacity-50"
-              >
-                Reject Registration
-              </button>
-            </div>
-          )}
-
-          {/* Refund action if approved/attended */}
-          {(registration.status === "approved" ||
-            registration.status === "attended" ||
-            registration.status === "no_show") && (
-            <div className="p-5 rounded-3xl space-y-2.5 surface">
-              <h2 className="text-xs uppercase tracking-widest text-[var(--ink-mute)] font-semibold">
-                Refunds & Cancellations
-              </h2>
-              <p className="text-[10px] text-[var(--ink-mute)] leading-relaxed">
-                This action is irreversible. It marks the record as refunded and updates the capacity.
-              </p>
-              <button
-                disabled={isLocked}
-                onClick={handleRefund}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold surface border border-[var(--surface-border)] hover:bg-[var(--cream-deep)]/30 transition-all text-[var(--danger)] disabled:opacity-50"
-              >
-                {processingAction === "refund" ? "Refunding..." : "Refund Registration"}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Rejection Reason Modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-50 animate-fade-in">
-          <div className="max-w-[440px] w-full p-6 rounded-3xl surface space-y-4">
-            <div className="text-lg font-display text-[var(--green-ink)]">Reject Registration</div>
-            <p className="text-xs text-[var(--ink-mute)] leading-relaxed">
-              Provide a reason for rejecting this registration. The attendee will see this reason if notifications are enabled.
+          <div className="p-5 rounded-3xl space-y-3 surface">
+            <h2 className="text-xs uppercase tracking-widest text-[var(--ink-mute)] font-semibold">
+              Admin Note
+            </h2>
+            <p className="text-xs text-[var(--ink-dim)] leading-relaxed">
+              This screen is for viewing submitted registration details and payment proof. Follow-up, confirmation, and group approval happen on WhatsApp.
             </p>
-
-            <form onSubmit={handleRejectSubmit} className="space-y-4">
-              <div>
-                <label className="block text-[10px] text-[var(--ink-mute)] mb-1 uppercase tracking-wider">
-                  Reason for Rejection
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  placeholder="e.g. Screenshot contains incorrect transaction date or invalid transaction reference."
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-xs bg-[var(--cream-soft)] border border-[var(--surface-border)] text-[var(--green-ink)] outline-none focus:border-[var(--green)] resize-none"
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowRejectModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold surface border border-[var(--surface-border)] hover:bg-[var(--cream-deep)]/30 text-[var(--ink-mute)]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLocked}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--danger)] text-white hover:-translate-y-0.5 transition-all"
-                >
-                  {processingAction === "reject" ? "Rejecting..." : "Confirm Rejection"}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Image Lightbox Modal */}
       {showImageZoom && signedUrl && (

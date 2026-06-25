@@ -156,10 +156,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
             Data: Buffer.from(rawMessage),
           },
           Source: SES_SENDER_EMAIL,
-          Destination: {
-            ToAddresses: [to],
-            BccAddresses: filteredBcc.length > 0 ? filteredBcc : undefined,
-          },
+          Destinations: [to, ...filteredBcc],
         })
       );
       messageId = response.MessageId;

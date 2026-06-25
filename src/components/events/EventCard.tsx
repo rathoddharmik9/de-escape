@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Event } from "@/lib/types";
 import TiltCard from "@/components/motion/TiltCard";
 import {
@@ -28,8 +27,9 @@ const POSTER_ICONS: Record<string, string> = {
 
 export default function EventCard({ event, index = 0 }: Props) {
   const left = seatsLeft(event);
+  const isPast = event.status === "past" || new Date(event.end_at).getTime() <= Date.now();
   const almostFull = left <= 5 && left > 0;
-  const soldOut = event.status === "sold_out" || left === 0;
+  const soldOut = !isPast && (event.status === "sold_out" || left === 0);
   const catColor = CATEGORY_COLORS[event.category] || "#8A9384";
 
   return (
@@ -43,12 +43,11 @@ export default function EventCard({ event, index = 0 }: Props) {
         {/* Poster */}
         <div className="aspect-[4/5] relative overflow-hidden">
           {event.cover_image_url ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={event.cover_image_url}
               alt={event.title}
-              fill
-              className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-              sizes="(max-width: 640px) 100vw, (max-width: 980px) 50vw, 33vw"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
             />
           ) : (
             <div
@@ -75,9 +74,9 @@ export default function EventCard({ event, index = 0 }: Props) {
           </span>
 
           {/* Status badge */}
-          {soldOut && (
+          {(soldOut || isPast) && (
             <span className="absolute top-3.5 right-3.5 z-10 text-[10px] font-medium tracking-widest uppercase px-3 py-1.5 rounded-full backdrop-blur-md border border-[var(--surface-border)] text-[var(--green-ink)]" style={{ background: "var(--cream-deep)" }}>
-              Sold out
+              {isPast ? "Past event" : "Sold out"}
             </span>
           )}
         </div>
@@ -110,7 +109,11 @@ export default function EventCard({ event, index = 0 }: Props) {
               )}
             </span>
 
-            {!soldOut && (
+            {isPast ? (
+              <span className="text-[11px] uppercase tracking-wider text-[var(--ink-dim)]">
+                View recap
+              </span>
+            ) : !soldOut && (
               <span
                 className={`text-[11px] uppercase tracking-wider flex items-center gap-1.5 ${
                   almostFull ? "text-[var(--lime-deep)]" : "text-[var(--ink-dim)]"

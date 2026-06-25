@@ -53,7 +53,7 @@ export default function PrivacyPage() {
                   3. Data Protection & Processing
                 </h2>
                 <p>
-                  We store and process your data using industry-leading third-party services including Supabase (data storage) and Razorpay (payment processing). We do not store or host credit card details or UPI PINs on our servers.
+                  We store and process your data using industry-leading third-party services including Supabase for data storage. We do not store or host UPI PINs or sensitive bank credentials on our servers.
                 </p>
               </div>
 

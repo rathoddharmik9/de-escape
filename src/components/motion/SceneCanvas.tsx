@@ -13,7 +13,7 @@ function lowGpu(): boolean {
 }
 
 export default function SceneCanvas() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const { uniformsRef } = useScene();
   const wrapRef = useRef<HTMLDivElement>(null);
 

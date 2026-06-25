@@ -12,10 +12,10 @@ export interface AttendeeProfile {
 
 export interface RegistrationSession {
   registrationId: string;
-  passCode: string;
   fullName: string;
   status: string;
   eventTitle: string;
+  groupInviteLink?: string;
 }
 
 interface SessionState {

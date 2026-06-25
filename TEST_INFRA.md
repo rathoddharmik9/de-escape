@@ -45,7 +45,7 @@ Ensures every core feature behaves correctly under standard conditions.
 #### 4. Attendee Registration
 - **T1.4.1**: Register an attendee for a free event.
 - **T1.4.2**: Register an attendee for a manual UPI payment event (awaiting verification).
-- **T1.4.3**: Submit Razorpay payment details for a paid event (Razorpay payment path).
+- **T1.4.3**: Reject manual UPI registration without payment proof.
 - **T1.4.4**: Retrieve registration status using ticket/pass code.
 - **T1.4.5**: Perform admin action to approve/reject registration.
 

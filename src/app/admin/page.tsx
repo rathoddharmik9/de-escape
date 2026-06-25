@@ -42,8 +42,8 @@ export default async function AdminDashboard() {
     .select("id", { count: "exact", head: true })
     .in("status", ["published", "sold_out"]);
 
-  // 2. Fetch pending registrations count
-  const { count: pendingCount } = await supabase
+  // 2. Fetch newly received registrations count
+  const { count: receivedCount } = await supabase
     .from("registrations")
     .select("id", { count: "exact", head: true })
     .eq("status", "awaiting_verification");
@@ -52,7 +52,7 @@ export default async function AdminDashboard() {
   const { data: revData } = await supabase
     .from("registrations")
     .select("amount_paise")
-    .in("status", ["approved", "attended"])
+    .in("status", ["approved", "attended", "no_show"])
     .gte("created_at", startOfMonth);
 
   const revenueThisMonth = (revData ?? []).reduce((acc, r) => acc + r.amount_paise, 0);
@@ -84,8 +84,8 @@ export default async function AdminDashboard() {
 
   const KPIs = [
     { label: "Active events", value: String(activeEventsCount ?? 0), unit: "", color: "var(--ok)", delta: "Published & sold out" },
-    { label: "Pending reviews", value: String(pendingCount ?? 0), unit: "", color: "var(--warn)", delta: "Awaiting verification" },
-    { label: "Revenue this month", value: formatPrice(revenueThisMonth), unit: "", color: "var(--green)", delta: "Approved or attended" },
+    { label: "New registrations", value: String(receivedCount ?? 0), unit: "", color: "var(--warn)", delta: "Payment proof received" },
+    { label: "Revenue this month", value: formatPrice(revenueThisMonth), unit: "", color: "var(--green)", delta: "Approved, attended, or no-show" },
     { label: "Attendance rate", value: String(attendanceRate), unit: "%", color: "var(--info)", delta: "Attended vs No-show" },
   ];
 
@@ -253,7 +253,7 @@ export default async function AdminDashboard() {
               href="/admin/registrations"
               className="surface py-3 rounded-xl text-xs font-medium text-center hover:bg-[var(--cream-deep)]/30 transition-all text-[var(--green-ink)]"
             >
-              Review pending ({pendingCount ?? 0})
+              View registrations ({receivedCount ?? 0})
             </Link>
             <Link
               href="/admin/events/new"

@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Menu, X } from "lucide-react";
 
-export default function Nav() {
+export default function Nav({ communityLink }: { communityLink?: string }) {
   const navRef = useRef<HTMLElement>(null);
+  const [open, setOpen] = useState(false);
+  const joinHref = communityLink || "/events";
 
   useEffect(() => {
     const nav = navRef.current;
@@ -69,7 +72,6 @@ export default function Nav() {
         {[
           { label: "Discover", href: "/events" },
           { label: "About", href: "/about" },
-          { label: "Find Pass", href: "/find-pass" },
         ].map((item) => (
           <li key={item.href} role="none">
             <Link
@@ -84,15 +86,56 @@ export default function Nav() {
       </ul>
 
       <div className="flex items-center gap-2">
-        <Link
-          href="/events"
+        <a
+          href={joinHref}
+          target={joinHref.startsWith("http") ? "_blank" : undefined}
+          rel={joinHref.startsWith("http") ? "noopener noreferrer" : undefined}
           data-cursor="true"
-          className="text-[13px] px-4 py-2.5 rounded-full font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--green-deep)]"
+          className="hidden sm:inline-flex text-[13px] px-4 py-2.5 rounded-full font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--green-deep)]"
           style={{ color: "var(--cream)", background: "var(--green)" }}
         >
-          Find your escape
-        </Link>
+          Join community
+        </a>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="md:hidden w-10 h-10 rounded-full surface flex items-center justify-center text-[var(--green-ink)]"
+          aria-label="Toggle navigation menu"
+          aria-expanded={open}
+        >
+          {open ? <X size={17} strokeWidth={2} /> : <Menu size={17} strokeWidth={2} />}
+        </button>
       </div>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-[calc(100%+10px)] rounded-3xl surface p-3 md:hidden">
+          <div className="grid gap-1">
+            {[
+              { label: "Discover", href: "/events" },
+              { label: "About", href: "/about" },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className="px-4 py-3 rounded-2xl text-sm text-[var(--green-ink)] hover:bg-[var(--cream-deep)]"
+              >
+                {item.label}
+              </Link>
+            ))}
+            <a
+              href={joinHref}
+              target={joinHref.startsWith("http") ? "_blank" : undefined}
+              rel={joinHref.startsWith("http") ? "noopener noreferrer" : undefined}
+              onClick={() => setOpen(false)}
+              className="mt-1 px-4 py-3 rounded-2xl text-sm font-medium text-center"
+              style={{ color: "var(--cream)", background: "var(--green)" }}
+            >
+              Join community
+            </a>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

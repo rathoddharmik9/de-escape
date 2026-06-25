@@ -53,7 +53,7 @@ export default function TermsPage() {
                   3. Payments and Verifications
                 </h2>
                 <p>
-                  Ticket purchases can be paid via instant Razorpay checkout or manual UPI verification. In cases of manual UPI payments, your registration is pending until verification. If we do not receive proof of payment or verify the transaction within the specified window, the registration may be cancelled without prior notice.
+                  Ticket purchases are handled through manual UPI verification. Your registration remains pending until payment proof is uploaded and verified by admin. If we do not receive proof of payment or cannot verify the transaction within the specified window, the registration may be cancelled without prior notice.
                 </p>
               </div>
 

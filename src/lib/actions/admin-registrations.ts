@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 function safeRevalidatePath(path: string) {
   try {
     revalidatePath(path);
-  } catch (error) {
+  } catch {
     // Ignore Next.js invariant errors outside request context
   }
 }
@@ -45,6 +45,14 @@ function escapeICS(str: string): string {
     .replace(/\n/g, "\\n");
 }
 
+const COUNTED_REGISTRATION_STATUSES = new Set([
+  "pending",
+  "awaiting_payment",
+  "awaiting_verification",
+  "approved",
+  "attended",
+  "no_show",
+]);
 
 async function verifyAdminSession() {
   const supabase = createClient();
@@ -123,21 +131,6 @@ export async function approveRegistration(registrationId: string): Promise<Regis
 
     if (error) {
       return { success: false, message: "Approval database error: " + error.message };
-    }
-
-    // Increment registered_count if payment_mode is manual_upi or free (Razorpay is incremented at webhook)
-    if (reg.payment_mode !== "razorpay") {
-      const { data: ev } = await supabase
-        .from("events")
-        .select("registered_count")
-        .eq("id", reg.event_id)
-        .single();
-      if (ev) {
-        await supabase
-          .from("events")
-          .update({ registered_count: ev.registered_count + 1 })
-          .eq("id", reg.event_id);
-      }
     }
 
     await writeAuditLog(user.id, "registration.approve", "registrations", registrationId, { status: reg.status }, { status: "approved" });
@@ -309,6 +302,21 @@ export async function rejectRegistration(registrationId: string, reason: string)
       return { success: false, message: "Rejection error: " + error.message };
     }
 
+    if (COUNTED_REGISTRATION_STATUSES.has(reg.status)) {
+      const { data: ev } = await supabase
+        .from("events")
+        .select("registered_count")
+        .eq("id", reg.event_id)
+        .single();
+
+      if (ev && ev.registered_count > 0) {
+        await supabase
+          .from("events")
+          .update({ registered_count: ev.registered_count - 1 })
+          .eq("id", reg.event_id);
+      }
+    }
+
     await writeAuditLog(user.id, "registration.reject", "registrations", registrationId, { status: reg.status }, { status: "rejected", reason });
 
     // Trigger rejection comms asynchronously
@@ -398,18 +406,19 @@ export async function refundRegistration(registrationId: string): Promise<Regist
       return { success: false, message: "Refund error: " + error.message };
     }
 
-    // Decrement registered_count on refund
-    const { data: ev } = await supabase
-      .from("events")
-      .select("registered_count")
-      .eq("id", reg.event_id)
-      .single();
-
-    if (ev && ev.registered_count > 0) {
-      await supabase
+    if (COUNTED_REGISTRATION_STATUSES.has(reg.status)) {
+      const { data: ev } = await supabase
         .from("events")
-        .update({ registered_count: ev.registered_count - 1 })
-        .eq("id", reg.event_id);
+        .select("registered_count")
+        .eq("id", reg.event_id)
+        .single();
+
+      if (ev && ev.registered_count > 0) {
+        await supabase
+          .from("events")
+          .update({ registered_count: ev.registered_count - 1 })
+          .eq("id", reg.event_id);
+      }
     }
 
     await writeAuditLog(user.id, "registration.refund", "registrations", registrationId, { status: reg.status }, { status: "refunded" });
@@ -508,8 +517,9 @@ export async function markAttendance(registrationId: string, attended: boolean):
     safeRevalidatePath("/admin");
     safeRevalidatePath("/admin/analytics");
     safeRevalidatePath("/admin/registrations");
-    if (reg.events && (reg.events as any).slug) {
-      safeRevalidatePath(`/events/${(reg.events as any).slug}`);
+    const event = reg.events as { slug?: string } | null;
+    if (event?.slug) {
+      safeRevalidatePath(`/events/${event.slug}`);
     }
 
     return { success: true };

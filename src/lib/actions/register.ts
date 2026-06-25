@@ -1,51 +1,35 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { verifyTurnstile } from "@/lib/turnstile";
 import { generateUniquePassCode } from "@/lib/passcode";
-import { z } from "zod";
-import Razorpay from "razorpay";
 import { sendEmail } from "@/lib/comms/email";
 import { sendWhatsAppTemplate } from "@/lib/comms/whatsapp";
 import { revalidatePath } from "next/cache";
+import {
+  detectPaymentProofMime,
+  extensionForPaymentProof,
+  MAX_PAYMENT_PROOF_BYTES,
+  RegistrationFieldErrors,
+  registrationActionSchema,
+  validateCustomAnswers,
+  zodIssuesToFieldErrors,
+} from "@/lib/validation/registration";
 
 function safeRevalidatePath(path: string) {
   try {
     revalidatePath(path);
-  } catch (error) {
+  } catch {
     // Ignore Next.js invariant errors outside request context
   }
 }
 
-
-const registerSchema = z.object({
-  eventId: z.string().uuid(),
-  fullName: z.string().min(2).max(80),
-  phone: z.string().regex(/^[6-9]\d{9}$/, "Must be a 10-digit Indian phone number"),
-  email: z.string().email(),
-  age: z.number().int().min(13).max(99),
-  city: z.string().min(1),
-  instagram: z.string().optional(),
-  heardFrom: z.string().optional(),
-  notes: z.string().max(400).optional(),
-  consent: z.literal(true),
-  screenshotBase64: z.string().optional(),
-  screenshotName: z.string().optional(),
-  turnstileToken: z.string(),
-  customAnswers: z.record(z.string(), z.any()).optional(),
-});
-
 export type RegisterState = {
   success: boolean;
   message?: string;
+  fieldErrors?: RegistrationFieldErrors;
   registrationId?: string;
   passCode?: string;
   status?: string;
-  razorpayOrder?: {
-    id: string;
-    amount: number;
-    keyId: string;
-  };
 };
 
 export async function registerAttendee(rawInput: unknown): Promise<RegisterState> {
@@ -53,11 +37,13 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
     const supabase = createAdminClient();
 
     // 1. Validate inputs
-    const parsed = registerSchema.safeParse(rawInput);
+    const parsed = registrationActionSchema.safeParse(rawInput);
     if (!parsed.success) {
+      const fieldErrors = zodIssuesToFieldErrors(parsed.error);
       return {
         success: false,
-        message: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "),
+        message: Object.values(fieldErrors)[0] || "Please fix the highlighted fields.",
+        fieldErrors,
       };
     }
 
@@ -74,21 +60,14 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       consent,
       screenshotBase64,
       screenshotName,
-      turnstileToken,
       customAnswers,
     } = parsed.data;
 
     // Normalize inputs
     const normalizedPhone = `+91${phone}`;
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedEmail = email;
 
-    // 2. Cloudflare Turnstile token validation
-    const turnstileOk = await verifyTurnstile(turnstileToken);
-    if (!turnstileOk) {
-      return { success: false, message: "Security verification failed. Please try again." };
-    }
-
-    // 3. Block-list checks
+    // 2. Block-list checks
     const { data: blocked } = await supabase
       .from("blocked_contacts")
       .select("id")
@@ -136,8 +115,18 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       return { success: false, message: "Event not found." };
     }
 
-    if (event.status === "draft" || event.status === "cancelled" || event.status === "past") {
-      return { success: false, message: "This event is no longer active." };
+    const customValidation = validateCustomAnswers(event.custom_fields ?? [], customAnswers ?? {});
+    if (!customValidation.success) {
+      return {
+        success: false,
+        message: Object.values(customValidation.errors)[0] || "Please fix the highlighted fields.",
+        fieldErrors: customValidation.errors,
+      };
+    }
+
+    const eventHasEnded = new Date(event.end_at).getTime() <= Date.now();
+    if (event.status === "draft" || event.status === "cancelled" || event.status === "past" || eventHasEnded) {
+      return { success: false, message: "Registration is closed for this event." };
     }
 
     // Check capacity
@@ -158,14 +147,37 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       status = "awaiting_verification";
       if (screenshotBase64 && screenshotName) {
         try {
-          const buffer = Buffer.from(screenshotBase64.split(",")[1] || screenshotBase64, "base64");
-          const ext = screenshotName.split(".").pop() || "png";
+          const base64Payload = screenshotBase64.split(",")[1] || screenshotBase64;
+          const buffer = Buffer.from(base64Payload, "base64");
+          if (buffer.length > MAX_PAYMENT_PROOF_BYTES) {
+            return {
+              success: false,
+              message: "Payment proof must be 5 MB or smaller.",
+              fieldErrors: { screenshot: "Payment proof must be 5 MB or smaller." },
+            };
+          }
+          const detectedMime = detectPaymentProofMime(buffer);
+          if (!detectedMime) {
+            return {
+              success: false,
+              message: "Payment proof must be a real JPG, PNG, HEIC, or HEIF image.",
+              fieldErrors: { screenshot: "Upload a real JPG, PNG, HEIC, or HEIF payment screenshot." },
+            };
+          }
+          const ext = extensionForPaymentProof(screenshotName, detectedMime);
+          if (!ext) {
+            return {
+              success: false,
+              message: "Payment proof must be a JPG, PNG, HEIC, or HEIF image.",
+              fieldErrors: { screenshot: "Upload a JPG, PNG, HEIC, or HEIF payment screenshot." },
+            };
+          }
           const path = `event-${eventId}/reg-${registrationId}.${ext}`;
 
           const { error: uploadError } = await supabase.storage
             .from("payment-proofs")
             .upload(path, buffer, {
-              contentType: `image/${ext === "jpg" ? "jpeg" : ext}`,
+              contentType: detectedMime,
               upsert: true,
             });
 
@@ -179,48 +191,17 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
           return { success: false, message: "Screenshot upload error." };
         }
       } else {
-        return { success: false, message: "Payment screenshot is required for UPI payment." };
+        return {
+          success: false,
+          message: "Payment screenshot is required for UPI payment.",
+          fieldErrors: { screenshot: "Payment screenshot is required." },
+        };
       }
-    } else if (event.payment_mode === "razorpay") {
-      status = "awaiting_payment";
     } else if (event.payment_mode === "free") {
       status = "awaiting_verification";
     }
 
-    // 8. Razorpay Order Creation
-    let razorpayOrder = undefined;
-    let razorpayOrderId = null;
-
-    if (event.payment_mode === "razorpay") {
-      if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-        return { success: false, message: "Razorpay payment integration is not configured." };
-      }
-
-      try {
-        const razorpay = new Razorpay({
-          key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          key_secret: process.env.RAZORPAY_KEY_SECRET,
-        });
-
-        const order = await razorpay.orders.create({
-          amount: event.price_paise,
-          currency: "INR",
-          receipt: registrationId,
-        });
-
-        razorpayOrderId = order.id;
-        razorpayOrder = {
-          id: order.id,
-          amount: event.price_paise,
-          keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        };
-      } catch (err) {
-        console.error("Razorpay order creation failed:", err);
-        return { success: false, message: "Failed to initiate online payment." };
-      }
-    }
-
-    // 9. Write to database
+    // 8. Write to database
     const { error: insertError } = await supabase.from("registrations").insert({
       id: registrationId,
       event_id: eventId,
@@ -233,9 +214,8 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       instagram: instagram || null,
       heard_from: heardFrom || null,
       notes: notes || null,
-      custom_answers: customAnswers || {},
+      custom_answers: customValidation.data,
       payment_mode: event.payment_mode,
-      razorpay_order_id: razorpayOrderId,
       amount_paise: event.price_paise,
       screenshot_url: screenshotUrl,
       status,
@@ -247,11 +227,20 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       return { success: false, message: "Database registration error." };
     }
 
+    const { error: countError } = await supabase
+      .from("events")
+      .update({ registered_count: event.registered_count + 1 })
+      .eq("id", eventId);
+
+    if (countError) {
+      console.error("Registered count update error:", countError.message);
+    }
+
     safeRevalidatePath("/");
     safeRevalidatePath("/events");
     safeRevalidatePath(`/events/${event.slug}`);
 
-    // 10. Outbound Comms Triggers
+    // 9. Outbound Comms Triggers
     if (status === "awaiting_verification") {
       (async () => {
         try {
@@ -276,7 +265,7 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
               <h2 style="font-family: 'Fredoka', sans-serif; color: #2C8A4B; margin-top: 0;">Payment Proof Submitted</h2>
               <p>Hey ${fullName},</p>
               <p>We've received your payment screenshot for <strong>${event.title}</strong>.</p>
-              <p>Our team is verifying the transaction details. We'll send you your passcode and ticket pass as soon as the review is complete.</p>
+              <p>Our team will follow up on WhatsApp with the next steps for this event.</p>
             `;
             await sendEmail({
               to: normalizedEmail,
@@ -314,7 +303,7 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
               <h2 style="font-family: 'Fredoka', sans-serif; color: #2C8A4B; margin-top: 0;">Registration Received</h2>
               <p>Hey ${fullName},</p>
               <p>We've received your registration for <strong>${event.title}</strong> on <strong>${formattedDate}</strong>.</p>
-              <p>Our team is reviewing your registration. We'll send you your passcode and ticket pass once approved.</p>
+              <p>Our team will follow up on WhatsApp with the next steps for this event.</p>
             `;
             await sendEmail({
               to: normalizedEmail,
@@ -337,7 +326,6 @@ export async function registerAttendee(rawInput: unknown): Promise<RegisterState
       registrationId,
       passCode,
       status,
-      razorpayOrder,
     };
   } catch (err) {
     console.error("Register attendee general error:", err);

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import PublicShell from "@/components/layout/PublicShell";
 import CoverParallax from "@/components/events/CoverParallax";
+import EventGallery from "@/components/events/EventGallery";
 import Reveal from "@/components/motion/Reveal";
 import MagneticButton from "@/components/motion/MagneticButton";
 import {
@@ -14,7 +14,7 @@ import {
   formatTime,
   seatsLeft,
 } from "@/lib/mock-data";
-import { getEventBySlug, getEventBySlugBuild, getPublishedEventSlugs } from "@/lib/data/events";
+import { getEventBySlug, getEventBySlugBuild, getEventGalleryImages, getPublishedEventSlugs } from "@/lib/data/events";
 
 export const revalidate = 60;
 
@@ -53,10 +53,12 @@ const POSTER_ICONS: Record<string, string> = {
 export default async function EventDetailPage({ params }: Props) {
   const event = await getEventBySlug(params.slug);
   if (!event) notFound();
+  const galleryImages = await getEventGalleryImages(event.id);
 
   const left = seatsLeft(event);
+  const isPast = event.status === "past" || new Date(event.end_at).getTime() <= Date.now();
   const almostFull = left <= 5 && left > 0;
-  const soldOut = event.status === "sold_out" || left === 0;
+  const soldOut = !isPast && (event.status === "sold_out" || left === 0);
   const catColor = CATEGORY_COLORS[event.category] || "#8A9384";
   const isFree = event.price_paise === 0;
 
@@ -66,13 +68,11 @@ export default async function EventDetailPage({ params }: Props) {
       <div className="relative w-full overflow-hidden" style={{ height: "65vh", minHeight: "420px" }}>
         <CoverParallax>
           {event.cover_image_url ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={event.cover_image_url}
               alt={event.title}
-              fill
-              priority
-              className="object-cover"
-              sizes="100vw"
+              className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
             <div className="absolute inset-0" style={{ background: POSTER_GRADIENTS[event.category] }}>
@@ -164,6 +164,10 @@ export default async function EventDetailPage({ params }: Props) {
               </div>
             </Reveal>
 
+            <Reveal>
+              <EventGallery images={galleryImages} eventTitle={event.title} />
+            </Reveal>
+
             <div className="mt-8 flex items-center gap-4">
               <span className="text-xs uppercase tracking-widest text-[var(--ink-mute)]">Share</span>
               {["WhatsApp", "Copy link"].map((s) => (
@@ -188,7 +192,11 @@ export default async function EventDetailPage({ params }: Props) {
                     {!isFree && <div className="text-xs text-[var(--ink-mute)] mt-0.5">per seat</div>}
                   </div>
 
-                  {almostFull && (
+                  {isPast ? (
+                    <span className="text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-full font-medium surface-deep text-[var(--ink-dim)]">
+                      Past event
+                    </span>
+                  ) : almostFull && (
                     <span
                       className="text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-full font-medium"
                       style={{ background: "rgba(200,241,53,0.25)", color: "var(--green-deep)", border: "1px solid var(--lime-deep)" }}
@@ -214,7 +222,11 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 </div>
 
-                {soldOut ? (
+                {isPast ? (
+                  <div className="w-full py-4 rounded-2xl text-center text-sm font-medium text-[var(--ink-dim)] surface-deep">
+                    This event has ended
+                  </div>
+                ) : soldOut ? (
                   <div className="w-full py-4 rounded-2xl text-center text-sm font-medium text-[var(--ink-mute)] surface-deep">
                     Sold out
                   </div>
@@ -232,19 +244,21 @@ export default async function EventDetailPage({ params }: Props) {
                 )}
 
                 <div className="mt-4 text-xs text-center text-[var(--ink-mute)]">
-                  {isFree
+                  {isPast
+                    ? "Registration is closed for past events."
+                    : isFree
                     ? "Free entry. Just show up."
                     : event.payment_mode === "manual_upi"
-                    ? "Pay via UPI · admin verifies"
-                    : "Secure payment · admin verifies"}
+                    ? "Pay via UPI · submit proof"
+                    : "Registration details are recorded"}
                 </div>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2 justify-center">
                 {[
-                  isFree ? "🎉 Free event" : event.payment_mode === "razorpay" ? "💳 Razorpay" : "📱 UPI",
-                  "✅ Admin approved",
-                  "📲 WhatsApp pass",
+                  isPast ? "Past event" : isFree ? "Free event" : "UPI payment",
+                  isPast ? "Recap only" : "Proof recorded",
+                  isPast ? "Registration closed" : "WhatsApp invite",
                 ].map((chip) => (
                   <span key={chip} className="text-[11px] px-2.5 py-1 rounded-full surface text-[var(--ink-dim)]">
                     {chip}

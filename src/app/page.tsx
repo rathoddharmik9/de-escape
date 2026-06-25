@@ -1,13 +1,12 @@
 import Link from "next/link";
 import PublicShell from "@/components/layout/PublicShell";
 import EventCard from "@/components/events/EventCard";
-import MarqueeTrack from "@/components/layout/MarqueeTrack";
 import HomeScenes from "@/components/motion/HomeScenes";
 import Reveal from "@/components/motion/Reveal";
 import MagneticButton from "@/components/motion/MagneticButton";
-import TiltCard from "@/components/motion/TiltCard";
-import { formatTime, seatsLeft } from "@/lib/mock-data";
-import { getPublishedEvents } from "@/lib/data/events";
+import { formatDate, formatPrice, formatTime, seatsLeft } from "@/lib/mock-data";
+import { getHomeEvents, getPastEvents, getPublishedEvents } from "@/lib/data/events";
+import { getPublicAppSettings } from "@/lib/actions/admin-settings";
 
 export const revalidate = 60;
 
@@ -19,37 +18,31 @@ const limeGradientText = {
 };
 
 export default async function HomePage() {
-  const upcoming = await getPublishedEvents();
-  const featuredEvent = upcoming[0] ?? null;
+  const [homeEvents, upcomingEvents, pastEvents, settings] = await Promise.all([
+    getHomeEvents(),
+    getPublishedEvents(),
+    getPastEvents(6),
+    getPublicAppSettings(),
+  ]);
+  const heroEvents = homeEvents.length > 0 ? homeEvents : upcomingEvents.slice(0, 4);
+  const communityLink = settings.community_whatsapp_link || settings.whatsapp_group_invite_link || "/contact";
 
   return (
     <PublicShell initialScene="dawn">
       <HomeScenes />
 
-      {/* ── HERO ── */}
-      <section className="min-h-screen px-6 pt-40 pb-20 flex items-center justify-center">
-        <div className="max-w-[1180px] w-full mx-auto grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-12 items-center">
-
-          {/* Left copy */}
+      <section className="px-6 pt-28 pb-16 sm:pt-36 sm:pb-20 lg:min-h-[92dvh] flex items-center">
+        <div className="max-w-[1180px] w-full mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-12 items-center">
           <div>
-            <div
-              id="hero-eyebrow"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 surface rounded-full text-xs text-[var(--ink-dim)] tracking-wider mb-7 opacity-0"
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: "var(--green)", boxShadow: "0 0 10px var(--lime)" }}
-              />
-              Slow events, in your city, this week
-            </div>
+            
 
             <h1
               id="hero-headline"
-              className="font-display font-semibold leading-[0.95] tracking-[-0.02em] text-[var(--green-ink)] max-w-[14ch]"
-              style={{ fontSize: "clamp(44px,6.5vw,84px)" }}
+              className="font-display font-semibold leading-[0.98] sm:leading-[0.95] text-[var(--green-ink)] max-w-[13ch]"
+              style={{ fontSize: "clamp(46px,7vw,92px)", letterSpacing: "-0.02em" }}
             >
               {["Escape", "the"].map((word) => (
-                <span key={word} className="inline-block overflow-hidden align-bottom px-[0.04em]">
+                <span key={word} className="inline-block overflow-hidden align-bottom px-[0.04em] mr-[0.18em]">
                   <span className="inline-block hero-word" style={{ transform: "translateY(110%)" }}>
                     {word}
                   </span>
@@ -60,25 +53,6 @@ export default async function HomePage() {
                   ordinary.
                 </span>
               </span>
-              <br />
-              {["Experience", "the"].map((word) => (
-                <span key={word} className="inline-block overflow-hidden align-bottom px-[0.04em]">
-                  <span className="inline-block hero-word" style={{ transform: "translateY(110%)" }}>
-                    {word}
-                  </span>
-                </span>
-              ))}{" "}
-              <br />
-              <span className="inline-block overflow-hidden align-bottom px-[0.04em]">
-                <span className="inline-block hero-word" style={{ transform: "translateY(110%)", ...limeGradientText }}>
-                  world
-                </span>
-              </span>{" "}
-              <span className="inline-block overflow-hidden align-bottom px-[0.04em]">
-                <span className="inline-block hero-word" style={{ transform: "translateY(110%)" }}>
-                  differently.
-                </span>
-              </span>
             </h1>
 
             <p
@@ -86,8 +60,8 @@ export default async function HomePage() {
               className="mt-7 text-lg leading-relaxed text-[var(--ink-dim)] max-w-[52ch] opacity-0"
               style={{ transform: "translateY(20px)" }}
             >
-              Curated in-real-life events — sound baths, suppers, run clubs, book circles.
-              Find something that makes you leave the house.
+              Curated meetups, slow gatherings, small adventures, and real rooms full of real people.
+              Register for an event or join the community list for the next one.
             </p>
 
             <div
@@ -97,16 +71,6 @@ export default async function HomePage() {
             >
               <MagneticButton className="inline-block">
                 <Link
-                  href="/events"
-                  data-cursor="Explore"
-                  className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-full text-sm font-medium transition-all duration-300 hover:bg-[var(--green-deep)]"
-                  style={{ background: "var(--green)", color: "var(--cream)" }}
-                >
-                  Find your escape
-                </Link>
-              </MagneticButton>
-              <MagneticButton className="inline-block">
-                <Link
                   href="/about"
                   data-cursor="true"
                   className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-full text-sm font-medium surface hover:bg-[var(--cream-deep)] transition-all duration-300 text-[var(--green-ink)]"
@@ -114,268 +78,133 @@ export default async function HomePage() {
                   Our story
                 </Link>
               </MagneticButton>
+              <MagneticButton className="inline-block">
+                <a
+                  href={communityLink}
+                  target={communityLink.startsWith("http") ? "_blank" : undefined}
+                  rel={communityLink.startsWith("http") ? "noopener noreferrer" : undefined}
+                  data-cursor="Join"
+                  className="relative inline-flex rounded-full p-[1px] overflow-hidden"
+                >
+                  <span
+                    className="absolute inset-[-50%] animate-[spin_4s_linear_infinite]"
+                    style={{ background: "conic-gradient(from 0deg,#2C8A4B,#C8F135,#A9CE1E,#2C8A4B)" }}
+                    aria-hidden="true"
+                  />
+                  <span className="relative inline-flex items-center gap-2.5 px-6 py-3.5 rounded-full text-sm font-medium text-[var(--green-ink)]" style={{ background: "var(--cream)" }}>
+                    Join the community
+                  </span>
+                </a>
+              </MagneticButton>
             </div>
           </div>
 
-          {/* Side featured-event card */}
-          <TiltCard max={7}>
-            {featuredEvent ? (
-              <aside
-                id="hero-card"
-                className="surface rounded-3xl p-6 opacity-0"
-                style={{ transform: "translateY(40px)" }}
-                aria-label="Featured event"
-              >
-                <div className="text-[11px] uppercase tracking-[0.15em] text-[var(--ink-mute)] mb-4">
-                  Next near you
-                </div>
+          <aside id="hero-card" className="surface rounded-[2rem] p-5 opacity-0" style={{ transform: "translateY(40px)" }} aria-label="Upcoming events">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-[11px] uppercase tracking-[0.15em] text-[var(--ink-mute)]">Register now</div>
+              <Link href="/events" className="text-xs text-[var(--green)] hover:underline">All events</Link>
+            </div>
 
-                <div className="flex gap-4 pb-5 border-b border-[var(--surface-border)]">
-                  <div className="w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={featuredEvent.cover_image_url}
-                      alt={featuredEvent.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div>
-                    <div className="font-display text-[19px] leading-tight tracking-tight text-[var(--green-ink)]">
-                      {featuredEvent.title}
-                    </div>
-                    <div className="text-xs text-[var(--ink-dim)] mt-1">
-                      {featuredEvent.venue_name} · {formatTime(featuredEvent.start_at)}
-                    </div>
-                    <span
-                      className="inline-block mt-2 text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full text-[var(--green-ink)]"
-                      style={{ background: "rgba(200,241,53,0.35)", border: "1px solid var(--lime-deep)" }}
-                    >
-                      Tonight
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  id="hero-countdown"
-                  className="mt-5 grid grid-cols-4 gap-2 text-center"
-                  data-target={featuredEvent.start_at}
-                >
-                  {["Days", "Hrs", "Min", "Sec"].map((unit, idx) => (
-                    <div key={unit} className="rounded-xl py-2.5 px-2" style={{ background: "var(--cream-deep)" }}>
-                      <div className="font-display text-xl text-[var(--green-ink)] countdown-num" data-cd-idx={idx}>--</div>
-                      <div className="text-[10px] uppercase tracking-widest text-[var(--ink-mute)] mt-1">
-                        {unit}
+            {heroEvents.length > 0 ? (
+              <div className="space-y-3">
+                {heroEvents.map((event) => {
+                  const left = seatsLeft(event);
+                  const pct = event.capacity > 0 ? Math.min(100, Math.round((event.registered_count / event.capacity) * 100)) : 0;
+                  return (
+                  <article
+                    key={event.id}
+                    className="group p-3 rounded-2xl hover:bg-[var(--cream-deep)] transition-colors"
+                  >
+                    <div className="grid grid-cols-[82px_1fr] gap-4">
+                    <Link href={`/events/${event.slug}`} className="w-[82px] h-[82px] rounded-2xl overflow-hidden bg-[var(--cream-deep)]">
+                      {event.cover_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={event.cover_image_url} alt={event.title} className="w-full h-full object-cover" />
+                      ) : null}
+                    </Link>
+                    <div className="min-w-0">
+                      <Link href={`/events/${event.slug}`} className="font-display block text-lg leading-tight text-[var(--green-ink)] group-hover:text-[var(--green)] transition-colors">
+                        {event.title}
+                      </Link>
+                      <div className="text-xs text-[var(--ink-dim)] mt-1 leading-relaxed">
+                        {formatDate(event.start_at)} · {formatTime(event.start_at)}
+                        <br />
+                        {event.venue_name}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-wider text-[var(--ink-mute)]">
+                        <span>{formatPrice(event.price_paise)}</span>
+                        <span>{left} seats left</span>
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                <div className="mt-5 flex justify-between items-center pt-4 border-t border-[var(--surface-border)] text-xs text-[var(--ink-dim)]">
-                  <span>Hosted by <strong className="text-[var(--green-ink)] font-medium">De-escape</strong></span>
-                  <span>
-                    <strong className="text-[var(--green-ink)] font-medium">{seatsLeft(featuredEvent)}</strong> seats left
-                  </span>
-                </div>
-
-                <Link
-                  href={`/events/${featuredEvent.slug}`}
-                  data-cursor="Reserve"
-                  className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium transition-all duration-300 hover:-translate-y-0.5"
-                  style={{ background: "var(--green)", color: "var(--cream)" }}
-                >
-                  Reserve seat →
-                </Link>
-              </aside>
+                    </div>
+                    <div className="mt-3 grid grid-cols-[1fr_auto] gap-3 items-center">
+                      <div>
+                        <div className="h-1.5 rounded-full bg-[var(--cream-deep)] overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${pct}%`, background: left <= 5 ? "var(--lime-deep)" : "var(--green)" }}
+                          />
+                        </div>
+                        <div className="mt-1 text-[10px] text-[var(--ink-mute)]">{event.registered_count}/{event.capacity} registered</div>
+                      </div>
+                      <Link
+                        href={`/events/${event.slug}/register`}
+                        data-cursor="Reserve"
+                        className="px-4 py-2 rounded-full text-xs font-semibold text-[var(--cream)] bg-[var(--green)] hover:bg-[var(--green-deep)] transition-all"
+                      >
+                        Register
+                      </Link>
+                    </div>
+                  </article>
+                )})}
+              </div>
             ) : (
-              <aside
-                id="hero-card"
-                className="surface rounded-3xl p-6 opacity-0 flex flex-col justify-between min-h-[340px]"
-                style={{ transform: "translateY(40px)" }}
-                aria-label="No upcoming events"
-              >
-                <div>
-                  <div className="text-[11px] uppercase tracking-[0.15em] text-[var(--ink-mute)] mb-4">
-                    Next escape
-                  </div>
-                  <div className="flex flex-col items-center text-center py-6">
-                    <span className="text-4xl mb-4 animate-pulse">⌬</span>
-                    <h4 className="font-display text-lg text-[var(--green-ink)] font-medium leading-snug">
-                      New escapes are cooking
-                    </h4>
-                    <p className="text-xs text-[var(--ink-dim)] mt-2 leading-relaxed px-2">
-                      Our next cohort of offline experiences is being curated. Sign up to get notified first.
-                    </p>
-                  </div>
-                </div>
-
-                <Link
-                  href="/contact"
-                  data-cursor="Notify Me"
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 mt-auto"
-                  style={{ background: "var(--green)", color: "var(--cream)" }}
-                >
-                  Get notified →
-                </Link>
-              </aside>
+              <div className="py-12 text-center">
+                <div className="font-display text-xl text-[var(--green-ink)]">New events are being planned</div>
+                <p className="text-xs text-[var(--ink-dim)] mt-2">Join the community to hear first.</p>
+              </div>
             )}
-          </TiltCard>
+          </aside>
         </div>
       </section>
 
-      {/* ── MARQUEE ── */}
-      <MarqueeTrack />
-
-      {/* ── WHAT'S ON ── */}
-      <section className="px-6 py-36" id="discover">
+      <section id="discover" className="px-6 py-20 sm:py-28 border-y border-[var(--surface-border)]" style={{ background: "var(--cream-soft)" }}>
         <div className="max-w-[1180px] mx-auto">
           <Reveal>
-            <div className="flex flex-wrap items-end justify-between gap-8 mb-14">
+            <div className="flex flex-wrap items-end justify-between gap-8 mb-12">
               <div>
-                <span className="block text-xs uppercase tracking-[0.18em] text-[var(--green)] mb-4">
-                  — Discover
-                </span>
-                <h2
-                  className="font-display font-medium leading-none tracking-tight text-[var(--green-ink)]"
-                  style={{ fontSize: "clamp(40px,5.5vw,68px)", letterSpacing: "-0.02em" }}
-                >
-                  Events that feel like
-                  <br />
-                  <span style={limeGradientText}>a breath, not a feed.</span>
+                <span className="block text-xs uppercase tracking-[0.18em] text-[var(--green)] mb-4">Past events</span>
+                <h2 className="font-display font-medium leading-tight text-[var(--green-ink)] max-w-[16ch]" style={{ fontSize: "clamp(36px,5vw,64px)", letterSpacing: "-0.02em" }}>
+                  Proof that people still show up.
                 </h2>
               </div>
-              <p className="text-[15px] text-[var(--ink-dim)] max-w-[36ch] leading-relaxed">
-                Hand-picked experiences. Filter by mood, neighbourhood, or &ldquo;what&apos;s on tonight.&rdquo;
-              </p>
+              <Link href="/events?time=past" className="text-sm text-[var(--green)] underline decoration-[var(--surface-border)] underline-offset-4 hover:decoration-[var(--green)]">
+                View all past events
+              </Link>
             </div>
           </Reveal>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {upcoming.slice(0, 6).map((event, i) => (
-              <Reveal key={event.id} delay={i * 0.05}>
-                <EventCard event={event} index={i} />
-              </Reveal>
-            ))}
-          </div>
-
-          <div className="mt-12 text-center">
-            <MagneticButton className="inline-block">
-              <Link
-                href="/events"
-                data-cursor="true"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-sm font-medium surface hover:bg-[var(--cream-deep)] transition-all duration-300 text-[var(--green-ink)]"
-              >
-                See all events →
-              </Link>
-            </MagneticButton>
-          </div>
-        </div>
-      </section>
-
-      {/* ── STATS BAND ── */}
-      <section className="px-6 py-20 border-y border-[var(--surface-border)]" style={{ background: "var(--cream-soft)" }}>
-        <div className="max-w-[1180px] mx-auto grid grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { n: "50+", em: "", label: "Events hosted" },
-            { n: "4", em: ".9", label: "Average rating" },
-            { n: "1,200", em: "+", label: "Happy explorers" },
-            { n: "6", em: "", label: "Cities & growing" },
-          ].map((s) => (
-            <Reveal key={s.label}>
-              <div
-                className="font-display leading-none tracking-tight flex items-baseline gap-1"
-                style={{ fontSize: "clamp(40px,5vw,72px)", letterSpacing: "-0.02em" }}
-              >
-                <span className="text-[var(--green-ink)]">{s.n}</span>
-                {s.em && <span style={limeGradientText}>{s.em}</span>}
-              </div>
-              <div className="mt-2 text-xs uppercase tracking-widest text-[var(--ink-mute)]">
-                {s.label}
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ── BRAND STORY TEASER ── */}
-      <section className="px-6 py-36">
-        <div className="max-w-[1180px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <Reveal>
-            <div>
-              <span className="block text-xs uppercase tracking-[0.18em] text-[var(--green)] mb-6">
-                — Why De-escape exists
-              </span>
-              <h2
-                className="font-display font-medium leading-tight tracking-tight text-[var(--green-ink)] max-w-[20ch]"
-                style={{ fontSize: "clamp(36px,4.5vw,56px)", letterSpacing: "-0.02em" }}
-              >
-                We made it too easy to stay home.
-                <span style={limeGradientText}> De-escape fixes that.</span>
-              </h2>
-              <p className="mt-6 text-[15px] text-[var(--ink-dim)] leading-relaxed max-w-[48ch]">
-                Real events, real people, real places. No algorithms deciding what you should care about.
-                Just a founder who believes the best moments happen when you leave the house.
-              </p>
-              <Link
-                href="/about"
-                data-cursor="true"
-                className="mt-8 inline-flex items-center gap-2 text-sm text-[var(--green)] underline decoration-[var(--surface-border)] underline-offset-4 hover:decoration-[var(--green)] transition-colors duration-200"
-              >
-                Read the story →
-              </Link>
-            </div>
-          </Reveal>
-
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Sound Baths", color: "#3FA76A", emoji: "⌬" },
-              { label: "Supper Clubs", color: "#A9CE1E", emoji: "✦" },
-              { label: "Run Clubs", color: "#2C8A4B", emoji: "↟" },
-              { label: "Book Circles", color: "#1F6336", emoji: "◍" },
-              { label: "Cycling Hunts", color: "#A9CE1E", emoji: "⟳" },
-              { label: "Open Mics", color: "#2C8A4B", emoji: "◐" },
-            ].map((cat, i) => (
-              <Reveal key={cat.label} delay={i * 0.05}>
-                <div className="p-5 rounded-2xl surface hover:border-[var(--green)]/30 transition-all duration-300 hover:-translate-y-1">
-                  <span className="text-2xl">{cat.emoji}</span>
-                  <div className="mt-2 text-sm font-medium" style={{ color: cat.color }}>
-                    {cat.label}
-                  </div>
-                </div>
+            {pastEvents.map((event, index) => (
+              <Reveal key={event.id} delay={index * 0.04}>
+                <EventCard event={event} index={index} />
               </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CLOSING CTA ── */}
-      <section className="px-6 pb-40">
+      <section className="px-6 py-32">
         <Reveal>
-          <div
-            className="max-w-[1100px] mx-auto rounded-[2.5rem] p-16 text-center relative overflow-hidden surface"
-          >
-            <div
-              className="absolute inset-[-2px] rounded-[2.5rem] -z-10"
-              style={{
-                background: "conic-gradient(from 0deg,#2C8A4B,#A9CE1E,#C8F135,#2C8A4B)",
-                opacity: 0.25,
-                animation: "spin 12s linear infinite",
-              }}
-              aria-hidden="true"
-            />
-
-            <h3
-              className="font-display font-medium leading-tight tracking-tight text-[var(--green-ink)] max-w-[18ch] mx-auto"
-              style={{ fontSize: "clamp(36px,5.5vw,68px)", letterSpacing: "-0.02em" }}
-            >
-              Your next story starts{" "}
-              <span style={limeGradientText}>outside.</span>
-            </h3>
-
-            <p className="mt-5 text-base text-[var(--ink-dim)] max-w-[48ch] mx-auto leading-relaxed">
-              Browse curated events near you. No app required — just show up.
+          <div className="max-w-[960px] mx-auto rounded-[2rem] p-8 sm:p-12 surface text-center">
+            <div className="text-xs uppercase tracking-[0.18em] text-[var(--green)] mb-4">Ready when you are</div>
+            <h2 className="font-display text-[var(--green-ink)] leading-tight mx-auto max-w-[16ch]" style={{ fontSize: "clamp(34px,5vw,62px)", letterSpacing: "-0.02em" }}>
+              Pick one plan and let the city do the rest.
+            </h2>
+            <p className="mt-5 text-sm sm:text-base text-[var(--ink-dim)] max-w-[46ch] mx-auto">
+              Register with UPI proof, get WhatsApp follow-up, and keep your pass ready for the event.
             </p>
-
-            <div className="mt-10 flex flex-wrap gap-3 justify-center">
+            <div className="mt-9">
               <MagneticButton className="inline-block">
                 <Link
                   href="/events"
@@ -383,16 +212,7 @@ export default async function HomePage() {
                   className="inline-flex items-center gap-2.5 px-7 py-4 rounded-full text-sm font-medium transition-all duration-300 hover:bg-[var(--green-deep)]"
                   style={{ background: "var(--green)", color: "var(--cream)" }}
                 >
-                  Browse all events
-                </Link>
-              </MagneticButton>
-              <MagneticButton className="inline-block">
-                <Link
-                  href="/find-pass"
-                  data-cursor="true"
-                  className="inline-flex items-center gap-2.5 px-7 py-4 rounded-full text-sm font-medium surface hover:bg-[var(--cream-deep)] transition-all duration-300 text-[var(--green-ink)]"
-                >
-                  Find my pass
+                  Browse events
                 </Link>
               </MagneticButton>
             </div>

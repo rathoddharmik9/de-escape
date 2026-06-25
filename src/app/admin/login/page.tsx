@@ -15,7 +15,7 @@ function AdminLoginForm() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    const errorParam = searchParams.get("error");
+    const errorParam = searchParams?.get("error");
     if (errorParam === "unauthorized") {
       setErrorMsg("Access denied. Your email is not registered as an administrator.");
     } else if (errorParam === "auth-failed") {

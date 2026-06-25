@@ -1,23 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Script from "next/script";
-import { Turnstile } from "@marsidev/react-turnstile";
+import { Check, Copy } from "lucide-react";
 import PublicShell from "@/components/layout/PublicShell";
 import MagneticButton from "@/components/motion/MagneticButton";
 import { formatPrice, formatDate } from "@/lib/mock-data";
 import type { Event } from "@/lib/types";
 import { registerAttendee } from "@/lib/actions/register";
 import { useSessionStore } from "@/lib/store/useSessionStore";
-import { useEffect } from "react";
-
-declare global {
-  interface Window {
-    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
-  }
-}
+import { DEFAULT_UPI_ID, DEFAULT_UPI_QR_IMAGE_URL } from "@/lib/payments";
+import {
+  registrationBaseSchema,
+  validateCustomAnswers,
+  validatePaymentProofFile,
+  zodIssuesToFieldErrors,
+} from "@/lib/validation/registration";
 
 const HEARD_FROM_OPTIONS = [
   "Instagram",
@@ -43,10 +42,9 @@ function fileToBase64(file: File): Promise<string> {
 
 export default function RegistrationForm({ event }: FormProps) {
   const router = useRouter();
-  const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [turnstileToken, setTurnstileToken] = useState("");
+  const [copiedUpi, setCopiedUpi] = useState(false);
 
   const profile = useSessionStore((state) => state.profile);
   const setProfile = useSessionStore((state) => state.setProfile);
@@ -65,6 +63,17 @@ export default function RegistrationForm({ event }: FormProps) {
     screenshot: null as File | null,
   });
 
+  const proofPreviewUrl = useMemo(() => {
+    if (!form.screenshot || !form.screenshot.type.startsWith("image/")) return "";
+    return URL.createObjectURL(form.screenshot);
+  }, [form.screenshot]);
+
+  useEffect(() => {
+    return () => {
+      if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
+    };
+  }, [proofPreviewUrl]);
+
   useEffect(() => {
     if (profile) {
       setForm((prev) => ({
@@ -79,57 +88,56 @@ export default function RegistrationForm({ event }: FormProps) {
     }
   }, [profile]);
   const [customAnswers, setCustomAnswers] = useState<Record<string, string | number | boolean>>({});
+  const paymentUpiId = event.upi_id || DEFAULT_UPI_ID;
+  const paymentQrImageUrl = event.upi_qr_image_url || DEFAULT_UPI_QR_IMAGE_URL;
 
   function set(field: string, value: string | boolean | File | null) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
   }
 
+  function handleScreenshotChange(file: File | null) {
+    const error = validatePaymentProofFile(file);
+    if (error) {
+      set("screenshot", null);
+      setErrors((prev) => ({ ...prev, screenshot: error }));
+      return;
+    }
+    set("screenshot", file);
+  }
+
+  async function copyUpiId() {
+    const upiId = paymentUpiId;
+    try {
+      await navigator.clipboard.writeText(upiId);
+      setCopiedUpi(true);
+      window.setTimeout(() => setCopiedUpi(false), 1600);
+    } catch {
+      setErrors((prev) => ({ ...prev, upi: "Could not copy UPI ID. Please select and copy it manually." }));
+    }
+  }
+
   function validate() {
-    const errs: Record<string, string> = {};
-    if (!form.fullName.trim() || form.fullName.trim().length < 2) {
-      errs.fullName = "Name required (min 2 chars)";
-    }
-    if (!form.phone.match(/^[6-9]\d{9}$/)) {
-      errs.phone = "Valid 10-digit Indian mobile required";
-    }
-    if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      errs.email = "Valid email required";
-    }
-    const age = parseInt(form.age);
-    if (isNaN(age) || age < 13 || age > 99) {
-      errs.age = "Age must be 13–99";
-    }
-    if (!form.city.trim()) {
-      errs.city = "City required";
-    }
-    if (!form.consent) {
-      errs.consent = "Consent required to proceed";
-    }
-    if (event.payment_mode === "manual_upi" && !form.screenshot) {
-      errs.screenshot = "Payment screenshot required";
+    const parsed = registrationBaseSchema.safeParse({
+      eventId: event.id,
+      fullName: form.fullName,
+      phone: form.phone,
+      email: form.email,
+      age: form.age,
+      city: form.city,
+      instagram: form.instagram,
+      heardFrom: form.heardFrom,
+      notes: form.notes,
+      consent: form.consent,
+    });
+    const errs: Record<string, string> = parsed.success ? {} : zodIssuesToFieldErrors(parsed.error);
+    if (event.payment_mode === "manual_upi") {
+      const proofError = validatePaymentProofFile(form.screenshot);
+      if (proofError) errs.screenshot = proofError;
     }
 
-    const customFields = event.custom_fields || [];
-    customFields.forEach((field) => {
-      if (field.required) {
-        const val = customAnswers[field.key];
-        if (field.type === "checkbox") {
-          if (!val) {
-            errs[field.key] = `${field.label} is required`;
-          }
-        } else {
-          if (
-            val === undefined ||
-            val === null ||
-            val === "" ||
-            (typeof val === "string" && !val.trim())
-          ) {
-            errs[field.key] = `${field.label} is required`;
-          }
-        }
-      }
-    });
+    const customValidation = validateCustomAnswers(event.custom_fields || [], customAnswers);
+    Object.assign(errs, customValidation.errors);
 
     return errs;
   }
@@ -139,18 +147,15 @@ export default function RegistrationForm({ event }: FormProps) {
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
-      const firstErr = document.querySelector("[data-field-error]");
-      firstErr?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-
-    if (event.payment_mode === "razorpay" && step === 1) {
-      setStep(2);
-      return;
-    }
-
-    if (!turnstileToken) {
-      setErrors((prev) => ({ ...prev, turnstile: "Please complete the security check" }));
+      requestAnimationFrame(() => {
+        const firstErr = document.querySelector("[data-field-error]");
+        firstErr?.scrollIntoView({ behavior: "smooth", block: "center" });
+        const field = firstErr?.getAttribute("data-field-error");
+        if (field) {
+          const input = document.querySelector<HTMLElement>(`[name="${field}"]`);
+          input?.focus();
+        }
+      });
       return;
     }
 
@@ -178,14 +183,17 @@ export default function RegistrationForm({ event }: FormProps) {
         consent: form.consent,
         screenshotBase64,
         screenshotName,
-        turnstileToken,
         customAnswers,
       };
 
       const res = await registerAttendee(payload);
 
       if (!res.success) {
-        setErrors((prev) => ({ ...prev, submit: res.message || "An error occurred during registration." }));
+        setErrors((prev) => ({
+          ...prev,
+          ...(res.fieldErrors || {}),
+          submit: res.message || "An error occurred during registration.",
+        }));
         setSubmitting(false);
         return;
       }
@@ -203,42 +211,13 @@ export default function RegistrationForm({ event }: FormProps) {
       // Save last registration session details to store
       setLastRegistration({
         registrationId: res.registrationId || "",
-        passCode: res.passCode || "",
         fullName: form.fullName,
         status: res.status || "pending",
         eventTitle: event.title,
+        groupInviteLink: event.community_group_invite,
       });
 
-      if (event.payment_mode === "razorpay" && res.razorpayOrder) {
-        const options = {
-          key: res.razorpayOrder.keyId,
-          amount: res.razorpayOrder.amount,
-          currency: "INR",
-          name: "De-escape",
-          description: event.title,
-          order_id: res.razorpayOrder.id,
-          handler: function () {
-            router.push(`/events/${event.slug}/success?reg=${res.registrationId}`);
-          },
-          prefill: {
-            name: form.fullName,
-            email: form.email,
-            contact: form.phone,
-          },
-          theme: {
-            color: "#C8F135",
-          },
-          modal: {
-            ondismiss: function () {
-              setSubmitting(false);
-            },
-          },
-        };
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      } else {
-        router.push(`/events/${event.slug}/success?reg=${res.registrationId}`);
-      }
+      router.push(`/events/${event.slug}/success?reg=${res.registrationId}`);
     } catch (err) {
       console.error("Submit handler error:", err);
       setErrors((prev) => ({ ...prev, submit: "Failed to submit registration. Please try again." }));
@@ -253,7 +232,6 @@ export default function RegistrationForm({ event }: FormProps) {
 
   return (
     <PublicShell initialScene="deep" footer={false}>
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <div className="px-6 pt-36 pb-24">
         <div className="max-w-[680px] mx-auto">
           {/* Back link */}
@@ -291,24 +269,64 @@ export default function RegistrationForm({ event }: FormProps) {
           {/* UPI payment info */}
           {event.payment_mode === "manual_upi" && (
             <div className="p-6 rounded-2xl mb-8" style={{ background: "rgba(44,138,75,0.08)", border: "1px solid var(--green)" }}>
-              <div className="text-sm font-medium text-[var(--green-deep)] mb-3">📱 Pay via UPI before submitting</div>
-              <div className="font-mono text-xl text-[var(--green-ink)] mb-1 p-3 rounded-xl" style={{ background: "var(--cream-deep)" }}>
-                {event.upi_id || "deescape@upi"}
+              <div className="text-sm font-medium text-[var(--green-deep)] mb-3">Pay via UPI before submitting</div>
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] gap-6 items-start">
+                <div>
+                  <div className="flex gap-2 items-stretch mb-1">
+                    <div className="font-mono text-lg sm:text-xl text-[var(--green-ink)] p-3 rounded-xl flex-1 min-w-0 break-all" style={{ background: "var(--cream-deep)" }}>
+                      {paymentUpiId}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={copyUpiId}
+                      className="w-12 rounded-xl surface flex items-center justify-center text-[var(--green-ink)] hover:bg-[var(--cream-deep)] transition-colors"
+                      aria-label="Copy UPI ID"
+                      title="Copy UPI ID"
+                    >
+                      {copiedUpi ? <Check size={17} strokeWidth={2.3} /> : <Copy size={17} strokeWidth={2.3} />}
+                    </button>
+                  </div>
+                  {copiedUpi && <p className="text-[10px] text-[var(--green)] mt-1">UPI ID copied.</p>}
+                  {errors.upi && <p className="text-[10px] text-[var(--error)] mt-1">{errors.upi}</p>}
+                  <p className="text-xs text-[var(--ink-mute)] mt-2">
+                    Send <strong className="text-[var(--green-ink)]">{formatPrice(event.price_paise)}</strong> to the UPI ID above, then upload your payment screenshot below.
+                  </p>
+                </div>
+                <div className="rounded-2xl overflow-hidden border border-[var(--surface-border)] bg-white p-3 min-h-[280px] md:min-h-[340px] flex items-center justify-center shadow-[0_14px_40px_rgba(44,138,75,0.12)]">
+                  {paymentQrImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={paymentQrImageUrl} alt={`UPI QR code for ${event.title}`} className="w-full max-w-[340px] aspect-square object-contain" />
+                  ) : (
+                    <div className="text-center px-2">
+                      <div className="text-[10px] uppercase tracking-widest text-[var(--ink-mute)]">UPI QR</div>
+                      <div className="text-xs text-[var(--ink-dim)] mt-1">Admin has not added a QR yet.</div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-[var(--ink-mute)] mt-2">
-                Send <strong className="text-[var(--green-ink)]">{formatPrice(event.price_paise)}</strong> to the UPI ID above, then upload screenshot below.
-              </p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
+            {Object.values(errors).filter(Boolean).length > 0 && (
+              <div
+                className="rounded-2xl border p-4 text-sm"
+                style={{ borderColor: "rgba(179,58,42,0.35)", background: "rgba(179,58,42,0.06)", color: "var(--danger)" }}
+                role="alert"
+              >
+                <div className="font-semibold">Please fix the highlighted fields.</div>
+                <div className="mt-1 text-xs opacity-90">
+                  {Object.values(errors).filter(Boolean)[0]}
+                </div>
+              </div>
+            )}
             {/* Full name */}
             <div>
               <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
                 Full name <span className="text-[var(--green)]">*</span>
               </label>
-              <input type="text" placeholder="Priya Sharma" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} className={inputClass("fullName")} />
-              {errors.fullName && <p data-field-error className="mt-1.5 text-xs text-[var(--error)]">{errors.fullName}</p>}
+              <input name="fullName" type="text" placeholder="Priya Sharma" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} className={inputClass("fullName")} />
+              {errors.fullName && <p data-field-error="fullName" className="mt-1.5 text-xs text-[var(--error)]">{errors.fullName}</p>}
             </div>
 
             {/* Phone + Email */}
@@ -317,15 +335,15 @@ export default function RegistrationForm({ event }: FormProps) {
                 <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
                   Phone <span className="text-[var(--green)]">*</span>
                 </label>
-                <input type="tel" placeholder="9876543210" value={form.phone} onChange={(e) => set("phone", e.target.value)} className={inputClass("phone")} />
-                {errors.phone && <p data-field-error className="mt-1.5 text-xs text-[var(--error)]">{errors.phone}</p>}
+                <input name="phone" type="tel" placeholder="9876543210" value={form.phone} onChange={(e) => set("phone", e.target.value)} className={inputClass("phone")} />
+                {errors.phone && <p data-field-error="phone" className="mt-1.5 text-xs text-[var(--error)]">{errors.phone}</p>}
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
                   Email <span className="text-[var(--green)]">*</span>
                 </label>
-                <input type="email" placeholder="priya@email.com" value={form.email} onChange={(e) => set("email", e.target.value)} className={inputClass("email")} />
-                {errors.email && <p data-field-error className="mt-1.5 text-xs text-[var(--error)]">{errors.email}</p>}
+                <input name="email" type="email" placeholder="priya@email.com" value={form.email} onChange={(e) => set("email", e.target.value)} className={inputClass("email")} />
+                {errors.email && <p data-field-error="email" className="mt-1.5 text-xs text-[var(--error)]">{errors.email}</p>}
               </div>
             </div>
 
@@ -335,32 +353,34 @@ export default function RegistrationForm({ event }: FormProps) {
                 <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
                   Age <span className="text-[var(--green)]">*</span>
                 </label>
-                <input type="number" placeholder="27" min={13} max={99} value={form.age} onChange={(e) => set("age", e.target.value)} className={inputClass("age")} />
-                {errors.age && <p data-field-error className="mt-1.5 text-xs text-[var(--error)]">{errors.age}</p>}
+                <input name="age" type="number" placeholder="27" min={13} max={99} value={form.age} onChange={(e) => set("age", e.target.value)} className={inputClass("age")} />
+                {errors.age && <p data-field-error="age" className="mt-1.5 text-xs text-[var(--error)]">{errors.age}</p>}
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
                   City / Neighbourhood <span className="text-[var(--green)]">*</span>
                 </label>
-                <input type="text" placeholder="Mumbai" value={form.city} onChange={(e) => set("city", e.target.value)} className={inputClass("city")} />
-                {errors.city && <p data-field-error className="mt-1.5 text-xs text-[var(--error)]">{errors.city}</p>}
+                <input name="city" type="text" placeholder="Mumbai" value={form.city} onChange={(e) => set("city", e.target.value)} className={inputClass("city")} />
+                {errors.city && <p data-field-error="city" className="mt-1.5 text-xs text-[var(--error)]">{errors.city}</p>}
               </div>
             </div>
 
             {/* Instagram */}
             <div>
               <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
-                Instagram <span className="text-[var(--ink-mute)] normal-case font-normal">(optional)</span>
+                Instagram <span className="text-[var(--green)]">*</span>
               </label>
-              <input type="text" placeholder="@yourhandle" value={form.instagram} onChange={(e) => set("instagram", e.target.value)} className={inputClass("instagram")} />
+              <input name="instagram" type="text" placeholder="@yourhandle" value={form.instagram} onChange={(e) => set("instagram", e.target.value)} className={inputClass("instagram")} />
+              {errors.instagram && <p data-field-error="instagram" className="mt-1.5 text-xs text-[var(--error)]">{errors.instagram}</p>}
             </div>
 
             {/* How did you hear */}
             <div>
               <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
-                How did you hear about us?
+                How did you hear about us? <span className="text-[var(--green)]">*</span>
               </label>
               <select
+                name="heardFrom"
                 value={form.heardFrom}
                 onChange={(e) => set("heardFrom", e.target.value)}
                 className={`${inputClass("heardFrom")} appearance-none`}
@@ -370,12 +390,13 @@ export default function RegistrationForm({ event }: FormProps) {
                   <option key={o} value={o}>{o}</option>
                 ))}
               </select>
+              {errors.heardFrom && <p data-field-error="heardFrom" className="mt-1.5 text-xs text-[var(--error)]">{errors.heardFrom}</p>}
             </div>
 
             {/* Notes */}
             <div>
               <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
-                Anything we should know?
+                Anything we should know? <span className="text-[var(--green)]">*</span>
               </label>
               <textarea
                 placeholder="Dietary restrictions, accessibility needs, or just a hello…"
@@ -383,8 +404,10 @@ export default function RegistrationForm({ event }: FormProps) {
                 maxLength={400}
                 value={form.notes}
                 onChange={(e) => set("notes", e.target.value)}
+                name="notes"
                 className={`${inputClass("notes")} resize-none`}
               />
+              {errors.notes && <p data-field-error="notes" className="mt-1.5 text-xs text-[var(--error)]">{errors.notes}</p>}
               <p className="text-[10px] text-[var(--ink-mute)] text-right mt-1">{form.notes.length}/400</p>
             </div>
 
@@ -399,22 +422,27 @@ export default function RegistrationForm({ event }: FormProps) {
                     errors.screenshot ? "border-[var(--error)]" : "border-[var(--surface-border)]"
                   } ${form.screenshot ? "!border-[var(--lime-deep)] bg-[rgba(200,241,53,0.08)]" : ""}`}
                 >
-                  <input type="file" accept="image/jpeg,image/png,image/heic" className="sr-only" onChange={(e) => set("screenshot", e.target.files?.[0] || null)} />
+                  <input name="screenshot" type="file" accept="image/jpeg,image/png,image/heic,image/heif" className="sr-only" onChange={(e) => handleScreenshotChange(e.target.files?.[0] || null)} />
                   {form.screenshot ? (
                     <div>
-                      <div className="text-2xl mb-2">✅</div>
+                      {proofPreviewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={proofPreviewUrl} alt="Selected payment screenshot preview" className="mx-auto mb-3 max-h-40 rounded-xl object-contain" />
+                      ) : (
+                        <div className="text-2xl mb-2">Selected</div>
+                      )}
                       <div className="text-sm font-medium text-[var(--green-deep)]">{form.screenshot.name}</div>
                       <div className="text-xs text-[var(--ink-mute)] mt-1">{(form.screenshot.size / 1024 / 1024).toFixed(2)} MB</div>
                     </div>
                   ) : (
                     <div>
-                      <div className="text-3xl mb-3">📸</div>
+                      <div className="text-3xl mb-3">Upload proof</div>
                       <div className="text-sm text-[var(--ink-dim)]">Drop screenshot here or click to upload</div>
                       <div className="text-xs text-[var(--ink-mute)] mt-1">JPEG, PNG, HEIC · max 5 MB</div>
                     </div>
                   )}
                 </label>
-                {errors.screenshot && <p data-field-error className="mt-1.5 text-xs text-[var(--error)]">{errors.screenshot}</p>}
+                {errors.screenshot && <p data-field-error="screenshot" className="mt-1.5 text-xs text-[var(--error)]">{errors.screenshot}</p>}
               </div>
             )}
 
@@ -432,6 +460,7 @@ export default function RegistrationForm({ event }: FormProps) {
                           <label className="flex items-start gap-3 cursor-pointer group">
                             <div className="relative mt-0.5 flex-shrink-0">
                               <input
+                                name={field.key}
                                 type="checkbox"
                                 checked={!!value}
                                 onChange={(e) => {
@@ -453,18 +482,19 @@ export default function RegistrationForm({ event }: FormProps) {
                               </div>
                             </div>
                             <span className="text-sm text-[var(--ink-dim)] leading-relaxed">
-                              {field.label} {field.required && <span className="text-[var(--green)]">*</span>}
+                              {field.label} <span className="text-[var(--green)]">*</span>
                             </span>
                           </label>
-                          {errorMsg && <p data-field-error className="mt-1.5 text-xs text-[var(--error)] ml-8">{errorMsg}</p>}
+                          {errorMsg && <p data-field-error={field.key} className="mt-1.5 text-xs text-[var(--error)] ml-8">{errorMsg}</p>}
                         </div>
                       ) : (
                         <div>
                           <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
-                            {field.label} {field.required && <span className="text-[var(--green)]">*</span>}
+                            {field.label} <span className="text-[var(--green)]">*</span>
                           </label>
                           {field.type === "textarea" ? (
                             <textarea
+                              name={field.key}
                               placeholder={`Enter ${field.label.toLowerCase()}…`}
                               value={(value as string) || ""}
                               onChange={(e) => {
@@ -476,6 +506,7 @@ export default function RegistrationForm({ event }: FormProps) {
                             />
                           ) : field.type === "select" ? (
                             <select
+                              name={field.key}
                               value={(value as string) || ""}
                               onChange={(e) => {
                                 setCustomAnswers((prev) => ({ ...prev, [field.key]: e.target.value }));
@@ -492,6 +523,7 @@ export default function RegistrationForm({ event }: FormProps) {
                             </select>
                           ) : field.type === "number" ? (
                             <input
+                              name={field.key}
                               type="number"
                               placeholder={`Enter ${field.label.toLowerCase()}…`}
                               value={(value as string) || ""}
@@ -511,6 +543,7 @@ export default function RegistrationForm({ event }: FormProps) {
                           ) : (
                             // Default: text
                             <input
+                              name={field.key}
                               type="text"
                               placeholder={`Enter ${field.label.toLowerCase()}…`}
                               value={(value as string) || ""}
@@ -521,7 +554,7 @@ export default function RegistrationForm({ event }: FormProps) {
                               className={inputClass(field.key)}
                             />
                           )}
-                          {errorMsg && <p data-field-error className="mt-1.5 text-xs text-[var(--error)]">{errorMsg}</p>}
+                          {errorMsg && <p data-field-error={field.key} className="mt-1.5 text-xs text-[var(--error)]">{errorMsg}</p>}
                         </div>
                       )}
                     </div>
@@ -530,27 +563,11 @@ export default function RegistrationForm({ event }: FormProps) {
               </div>
             )}
 
-            {/* Turnstile Verification Widget */}
-            {form.fullName && form.phone && form.email && (
-              <div className="flex justify-center py-2">
-                <Turnstile
-                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
-                  onSuccess={(token) => {
-                    setTurnstileToken(token);
-                    setErrors((prev) => ({ ...prev, turnstile: "" }));
-                  }}
-                  onError={() => setErrors((prev) => ({ ...prev, turnstile: "Security verification failed." }))}
-                  onExpire={() => setTurnstileToken("")}
-                />
-              </div>
-            )}
-            {errors.turnstile && <p className="text-center text-xs text-[var(--error)]">{errors.turnstile}</p>}
-
             {/* Consent */}
             <div>
               <label className="flex items-start gap-3 cursor-pointer group">
                 <div className="relative mt-0.5 flex-shrink-0">
-                  <input type="checkbox" checked={form.consent} onChange={(e) => set("consent", e.target.checked)} className="sr-only peer" />
+                  <input name="consent" type="checkbox" checked={form.consent} onChange={(e) => set("consent", e.target.checked)} className="sr-only peer" />
                   <div
                     className={`w-5 h-5 rounded-md border-2 transition-all duration-200 flex items-center justify-center ${
                       form.consent ? "border-[var(--green)] bg-[var(--green)]" : "border-[var(--surface-border)] bg-transparent"
@@ -564,21 +581,11 @@ export default function RegistrationForm({ event }: FormProps) {
                   </div>
                 </div>
                 <span className="text-sm text-[var(--ink-dim)] leading-relaxed">
-                  Send me WhatsApp + email updates about this event and De-escape.
+                  Send me WhatsApp + email updates about this event and De-escape. <span className="text-[var(--green)]">*</span>
                 </span>
               </label>
-              {errors.consent && <p data-field-error className="mt-1.5 text-xs text-[var(--error)] ml-8">{errors.consent}</p>}
+              {errors.consent && <p data-field-error="consent" className="mt-1.5 text-xs text-[var(--error)] ml-8">{errors.consent}</p>}
             </div>
-
-            {/* Razorpay step 2 */}
-            {step === 2 && event.payment_mode === "razorpay" && (
-              <div className="p-6 rounded-2xl" style={{ background: "rgba(44,138,75,0.06)", border: "1px solid var(--green)" }}>
-                <div className="text-sm font-medium text-[var(--green-deep)] mb-2">💳 Payment — {formatPrice(event.price_paise)}</div>
-                <p className="text-xs text-[var(--ink-dim)]">
-                  Clicking below will open the Razorpay checkout. Payment is required to complete your registration.
-                </p>
-              </div>
-            )}
 
             {/* Submit */}
             {errors.submit && <p className="text-center text-xs text-[var(--error)]">{errors.submit}</p>}
@@ -597,10 +604,8 @@ export default function RegistrationForm({ event }: FormProps) {
                     </svg>
                     Submitting…
                   </span>
-                ) : event.payment_mode === "razorpay" && step === 1 ? (
-                  `Continue to payment — ${formatPrice(event.price_paise)} →`
-                ) : event.payment_mode === "razorpay" && step === 2 ? (
-                  `Pay ${formatPrice(event.price_paise)} with Razorpay →`
+                ) : event.payment_mode === "manual_upi" ? (
+                  "Submit payment proof →"
                 ) : (
                   "Submit registration →"
                 )}

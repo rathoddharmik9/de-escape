@@ -19,7 +19,10 @@ export default function Reveal({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const narrow = window.innerWidth < 768;
+    if (reduce || coarse || narrow) {
       gsap.set(el, { opacity: 1, y: 0 });
       return;
     }

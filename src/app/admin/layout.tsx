@@ -14,18 +14,8 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: "Comms",
-    items: [
-      { label: "Broadcasts", href: "/admin/broadcasts", icon: "◍" },
-      { label: "Inbox", href: "/admin/inbox", icon: "▣" },
-    ],
-  },
-  {
     label: "Admin",
     items: [
-      { label: "Templates", href: "/admin/templates", icon: "▤" },
-      { label: "Block list", href: "/admin/block-list", icon: "⊗" },
-      { label: "Audit log", href: "/admin/audit-log", icon: "≡" },
       { label: "Settings", href: "/admin/settings", icon: "⊞" },
     ],
   },
@@ -36,7 +26,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
 
   if (pathname === "/admin/login") {
     return <>{children}</>;
@@ -107,26 +97,6 @@ export default function AdminLayout({
                       }>
                       <span className="text-sm opacity-60">{item.icon}</span>
                       {item.label}
-                      {item.label === "Registrations" && (
-                        <span
-                          className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                          style={{
-                            background: "rgba(199,126,26,0.12)",
-                            color: "var(--warn)",
-                          }}>
-                          12
-                        </span>
-                      )}
-                      {item.label === "Inbox" && (
-                        <span
-                          className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                          style={{
-                            background: "rgba(179,58,42,0.10)",
-                            color: "var(--danger)",
-                          }}>
-                          3
-                        </span>
-                      )}
                     </Link>
                   );
                 })}

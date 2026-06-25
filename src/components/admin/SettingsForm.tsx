@@ -96,7 +96,24 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
               className="w-full px-4 py-3 rounded-xl text-sm bg-[var(--cream-soft)] border text-[var(--green-ink)] placeholder:text-[var(--ink-mute)] outline-none border-[var(--surface-border)] focus:border-[var(--green)] transition-all"
             />
             <span className="text-[10px] text-[var(--ink-mute)] mt-1.5 block">
-              Default invite link attached to WhatsApp passcode approvals.
+              Default invite link used when an event does not have its own WhatsApp group link.
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2 font-medium">
+              Public Community Join Link
+            </label>
+            <input
+              type="url"
+              required
+              value={settings.community_whatsapp_link || ""}
+              onChange={(e) => handleChange("community_whatsapp_link", e.target.value)}
+              placeholder="https://chat.whatsapp.com/..."
+              className="w-full px-4 py-3 rounded-xl text-sm bg-[var(--cream-soft)] border text-[var(--green-ink)] placeholder:text-[var(--ink-mute)] outline-none border-[var(--surface-border)] focus:border-[var(--green)] transition-all"
+            />
+            <span className="text-[10px] text-[var(--ink-mute)] mt-1.5 block">
+              Used by the public homepage Join Community button.
             </span>
           </div>
         </div>
@@ -134,6 +151,38 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
               className="w-full px-4 py-3 rounded-xl text-sm bg-[var(--cream-soft)] border text-[var(--green-ink)] placeholder:text-[var(--ink-mute)] outline-none border-[var(--surface-border)] focus:border-[var(--green)] transition-all"
             />
           </div>
+        </div>
+      </div>
+
+      <div className="surface p-6 rounded-2xl space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--green-ink)] border-b border-[var(--surface-border)] pb-2 mb-4">
+          Public Footer Links
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[
+            ["instagram_url", "Instagram URL", "https://instagram.com/de_escape"],
+            ["facebook_url", "Facebook URL", "https://facebook.com/deescape"],
+            ["footer_whatsapp_url", "Footer WhatsApp URL", "https://chat.whatsapp.com/..."],
+            ["privacy_url", "Privacy Link", "/privacy"],
+            ["terms_url", "Terms Link", "/terms"],
+            ["refund_policy_url", "Refund Policy Link", "/refund-policy"],
+            ["contact_url", "Contact Link", "/contact"],
+          ].map(([key, label, placeholder]) => (
+            <div key={key}>
+              <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2 font-medium">
+                {label}
+              </label>
+              <input
+                type="text"
+                required
+                value={settings[key] || ""}
+                onChange={(e) => handleChange(key, e.target.value)}
+                placeholder={placeholder}
+                className="w-full px-4 py-3 rounded-xl text-sm bg-[var(--cream-soft)] border text-[var(--green-ink)] placeholder:text-[var(--ink-mute)] outline-none border-[var(--surface-border)] focus:border-[var(--green)] transition-all"
+              />
+            </div>
+          ))}
         </div>
       </div>
 

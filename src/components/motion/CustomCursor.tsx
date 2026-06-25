@@ -1,20 +1,25 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { gsap } from "gsap";
 
 export default function CustomCursor() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const dotRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    if (pathname.startsWith("/admin")) return;
     const fine = window.matchMedia("(pointer: fine)").matches;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!fine || reduce) return;
+    const wideEnough = window.innerWidth >= 768;
+    setEnabled(!pathname.startsWith("/admin") && fine && wideEnough && !reduce);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!enabled) return;
 
     document.body.style.cursor = "none";
     const dot = dotRef.current!;
@@ -58,20 +63,20 @@ export default function CustomCursor() {
       document.removeEventListener("pointerover", over);
       cancelAnimationFrame(raf);
     };
-  }, [pathname]);
+  }, [enabled]);
 
-  if (pathname.startsWith("/admin")) return null;
+  if (!enabled) return null;
 
   return (
     <>
       <div
         ref={dotRef}
-        className="fixed top-0 left-0 z-[100] pointer-events-none -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full"
+        className="hidden md:block fixed top-0 left-0 z-[100] pointer-events-none -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full"
         style={{ background: "var(--green)" }}
       />
       <div
         ref={ringRef}
-        className="fixed top-0 left-0 z-[100] pointer-events-none -translate-x-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center"
+        className="hidden md:flex fixed top-0 left-0 z-[100] pointer-events-none -translate-x-1/2 -translate-y-1/2 w-9 h-9 rounded-full items-center justify-center"
         style={{ border: "1.5px solid var(--green)" }}
       >
         <span

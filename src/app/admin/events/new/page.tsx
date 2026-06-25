@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import { createEvent } from "@/lib/actions/admin-events";
+import { createEvent, uploadEventMedia } from "@/lib/actions/admin-events";
+import { DEFAULT_UPI_ID, DEFAULT_UPI_QR_IMAGE_URL } from "@/lib/payments";
 
 const CATEGORIES = [
   { value: "sound_bath", label: "Sound Bath" },
@@ -17,7 +17,6 @@ const CATEGORIES = [
 
 export default function NewEventPage() {
   const router = useRouter();
-  const supabase = createClient();
   
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -38,16 +37,19 @@ export default function NewEventPage() {
     capacity: "20",
     priceInr: "499",
     paymentMode: "manual_upi",
-    upiId: "",
+    upiId: DEFAULT_UPI_ID,
+    upiQrImageUrl: DEFAULT_UPI_QR_IMAGE_URL,
+    communityGroupInvite: "",
+    showOnHome: false,
     refundPolicy: "Full refund up to 48 hours before the event. No refunds within 48 hours.",
   });
 
-  function set(field: string, value: string) {
+  function set(field: string, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: "" }));
     
     // Auto-generate slug from title
-    if (field === "title" && !form.slug) {
+    if (field === "title" && typeof value === "string" && !form.slug) {
       const slugified = value
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, "")
@@ -55,6 +57,15 @@ export default function NewEventPage() {
         .substring(0, 40);
       setForm((prev) => ({ ...prev, title: value, slug: slugified }));
     }
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
   }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -65,29 +76,44 @@ export default function NewEventPage() {
     setErrors((prev) => ({ ...prev, coverImageUrl: "" }));
 
     try {
-      const ext = file.name.split(".").pop();
-      const path = `cover-${Date.now()}.${ext}`;
+      const res = await uploadEventMedia({
+        fileBase64: await fileToBase64(file),
+        fileName: file.name,
+        contentType: file.type || "image/jpeg",
+        folder: "covers",
+      });
+      if (!res.success || !res.publicUrl) throw new Error(res.message || "Upload failed");
 
-      const { data, error } = await supabase.storage
-        .from("event-media")
-        .upload(path, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("event-media")
-        .getPublicUrl(data.path);
-
-      setForm((prev) => ({ ...prev, coverImageUrl: publicUrl }));
+      setForm((prev) => ({ ...prev, coverImageUrl: res.publicUrl || "" }));
     } catch (err: unknown) {
       console.error("Cover upload error:", err);
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       setErrors((prev) => ({ ...prev, coverImageUrl: "Failed to upload image: " + errorMessage }));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleQrUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setErrors((prev) => ({ ...prev, upiQrImageUrl: "" }));
+
+    try {
+      const res = await uploadEventMedia({
+        fileBase64: await fileToBase64(file),
+        fileName: file.name,
+        contentType: file.type || "image/jpeg",
+        folder: "upi-qr",
+      });
+      if (!res.success || !res.publicUrl) throw new Error(res.message || "Upload failed");
+
+      setForm((prev) => ({ ...prev, upiQrImageUrl: res.publicUrl || "" }));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setErrors((prev) => ({ ...prev, upiQrImageUrl: "Failed to upload QR image: " + errorMessage }));
     } finally {
       setUploading(false);
     }
@@ -113,6 +139,9 @@ export default function NewEventPage() {
     
     if (form.paymentMode === "manual_upi" && !form.upiId.trim()) {
       errs.upiId = "UPI ID required for UPI payments";
+    }
+    if (form.communityGroupInvite && !form.communityGroupInvite.startsWith("https://")) {
+      errs.communityGroupInvite = "Use a full HTTPS WhatsApp invite link";
     }
     
     return errs;
@@ -145,6 +174,9 @@ export default function NewEventPage() {
         pricePaise: Math.round(parseFloat(form.priceInr) * 100),
         paymentMode: form.paymentMode,
         upiId: form.upiId,
+        upiQrImageUrl: form.upiQrImageUrl,
+        communityGroupInvite: form.communityGroupInvite,
+        showOnHome: form.showOnHome,
         refundPolicy: form.refundPolicy,
       };
 
@@ -264,23 +296,53 @@ export default function NewEventPage() {
               {errors.priceInr && <p className="mt-1.5 text-xs text-[var(--danger)]">{errors.priceInr}</p>}
             </div>
 
-            <div>
-              <label className="block text-xs uppercase tracking-[0.05em] text-[var(--ink-mute)] mb-1">Payment Mode</label>
-              <select value={form.paymentMode} onChange={(e) => set("paymentMode", e.target.value)} className={`${inputClass("paymentMode")} appearance-none`}>
-                <option value="manual_upi" className="bg-[var(--cream)]">Manual UPI Transfer</option>
-                <option value="razorpay" className="bg-[var(--cream)]">Razorpay Checkout</option>
-              </select>
+            <div className="rounded-xl border border-[var(--surface-border)] bg-[var(--cream-soft)] px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.05em] text-[var(--ink-mute)] mb-1">Payment Mode</div>
+              <div className="text-sm font-medium text-[var(--green-ink)]">Manual UPI verification</div>
+              <p className="text-[10px] text-[var(--ink-mute)] mt-1">Attendees upload proof. Follow-up happens on WhatsApp.</p>
             </div>
           </div>
 
-          {form.paymentMode === "manual_upi" && (
-            <div>
-              <label className="block text-xs uppercase tracking-[0.05em] text-[var(--ink-mute)] mb-1">UPI Address for Transfer</label>
-              <input type="text" placeholder="deescape@upi" value={form.upiId} onChange={(e) => set("upiId", e.target.value)} className={inputClass("upiId")} />
-              {errors.upiId && <p className="mt-1.5 text-xs text-[var(--danger)]">{errors.upiId}</p>}
+          <div>
+            <label className="block text-xs uppercase tracking-[0.05em] text-[var(--ink-mute)] mb-1">UPI Address for Transfer</label>
+            <input type="text" placeholder={DEFAULT_UPI_ID} value={form.upiId} onChange={(e) => set("upiId", e.target.value)} className={inputClass("upiId")} />
+            {errors.upiId && <p className="mt-1.5 text-xs text-[var(--danger)]">{errors.upiId}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-[0.05em] text-[var(--ink-mute)] mb-2">UPI QR Image</label>
+            <div className="flex gap-4 items-center">
+              {form.upiQrImageUrl && (
+                <div className="w-20 h-20 rounded-xl overflow-hidden border border-[var(--surface-border)] bg-white p-1 flex-shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={form.upiQrImageUrl} alt="UPI QR preview" className="w-full h-full object-contain" />
+                </div>
+              )}
+              <div>
+                <input type="file" accept="image/*" onChange={handleQrUpload} className="hidden" id="upi-qr-upload-file" disabled={uploading} />
+                <label htmlFor="upi-qr-upload-file" className="px-4 py-2 rounded-xl text-xs font-semibold surface hover:bg-[var(--cream-deep)] cursor-pointer inline-block">
+                  {uploading ? "Uploading..." : "Upload UPI QR"}
+                </label>
+                <p className="text-[10px] text-[var(--ink-mute)] mt-1">Square QR image recommended.</p>
+                {errors.upiQrImageUrl && <p className="mt-1.5 text-xs text-[var(--danger)]">{errors.upiQrImageUrl}</p>}
+              </div>
             </div>
-          )}
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-[0.05em] text-[var(--ink-mute)] mb-1">Event WhatsApp Group Invite</label>
+            <input type="url" placeholder="https://chat.whatsapp.com/..." value={form.communityGroupInvite} onChange={(e) => set("communityGroupInvite", e.target.value)} className={inputClass("communityGroupInvite")} />
+            {errors.communityGroupInvite && <p className="mt-1.5 text-xs text-[var(--danger)]">{errors.communityGroupInvite}</p>}
+          </div>
         </div>
+
+        <label className="flex items-start gap-3 p-4 rounded-2xl surface cursor-pointer">
+          <input type="checkbox" checked={form.showOnHome} onChange={(e) => set("showOnHome", e.target.checked)} className="mt-1" />
+          <span>
+            <span className="block text-sm font-medium text-[var(--green-ink)]">Show this event on the homepage</span>
+            <span className="block text-xs text-[var(--ink-mute)] mt-1">Published upcoming events with this flag appear in the hero event list.</span>
+          </span>
+        </label>
 
         {/* Cover image upload */}
         <div>

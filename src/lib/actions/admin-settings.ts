@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { revalidatePath } from "next/cache";
 
 async function verifyAdminSession() {
   const supabase = createClient();
@@ -55,6 +56,14 @@ export type ActionState = {
 const DEFAULT_SETTINGS: Record<string, string> = {
   ses_sender_email: "De-escape <noreply@de-escape.in>",
   whatsapp_group_invite_link: "https://chat.whatsapp.com/example",
+  community_whatsapp_link: "https://chat.whatsapp.com/example",
+  instagram_url: "https://instagram.com/de_escape",
+  facebook_url: "https://facebook.com/deescape",
+  footer_whatsapp_url: "https://chat.whatsapp.com/example",
+  privacy_url: "/privacy",
+  terms_url: "/terms",
+  refund_policy_url: "/refund-policy",
+  contact_url: "/contact",
   support_phone: "+91 98765 43210",
   support_email: "support@de-escape.in",
   default_refund_policy: "Full refund 48h before event start. No refunds within 48h.",
@@ -109,6 +118,26 @@ export async function getAppSettings(): Promise<Record<string, string>> {
   }
 }
 
+export async function getPublicAppSettings(): Promise<Record<string, string>> {
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("key, value");
+
+    if (error) throw error;
+
+    const settingsMap: Record<string, string> = { ...DEFAULT_SETTINGS };
+    (data || []).forEach((row) => {
+      settingsMap[row.key] = row.value;
+    });
+    return settingsMap;
+  } catch (err) {
+    console.error("Error fetching public app settings:", err);
+    return DEFAULT_SETTINGS;
+  }
+}
+
 // 2. Update app settings
 export async function updateAppSettings(settings: Record<string, string>): Promise<ActionState> {
   try {
@@ -148,6 +177,13 @@ export async function updateAppSettings(settings: Record<string, string>): Promi
       beforeMap,
       settings
     );
+
+    revalidatePath("/");
+    revalidatePath("/events");
+    revalidatePath("/privacy");
+    revalidatePath("/terms");
+    revalidatePath("/refund-policy");
+    revalidatePath("/contact");
 
     return { success: true };
   } catch (err: unknown) {

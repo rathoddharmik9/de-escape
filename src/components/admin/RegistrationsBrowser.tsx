@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/mock-data";
-import { approveRegistration, rejectRegistration } from "@/lib/actions/admin-registrations";
 
 interface RegItem {
   id: string;
@@ -23,7 +22,9 @@ interface BrowserProps {
 }
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }> = {
-  awaiting_verification: { label: "Pending", bg: "rgba(199,126,26,0.10)", color: "var(--warn)" },
+  pending: { label: "Received", bg: "var(--cream-deep)", color: "var(--ink-dim)" },
+  awaiting_payment: { label: "Payment Pending", bg: "rgba(199,126,26,0.10)", color: "var(--warn)" },
+  awaiting_verification: { label: "Received", bg: "rgba(199,126,26,0.10)", color: "var(--warn)" },
   approved: { label: "Approved", bg: "rgba(46,122,76,0.10)", color: "var(--ok)" },
   rejected: { label: "Rejected", bg: "rgba(179,58,42,0.10)", color: "var(--danger)" },
   attended: { label: "Attended", bg: "rgba(74,111,176,0.10)", color: "var(--info)" },
@@ -31,54 +32,9 @@ const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }
 };
 
 export default function RegistrationsBrowser({ initialRegistrations }: BrowserProps) {
-  const [registrations, setRegistrations] = useState<RegItem[]>(initialRegistrations);
+  const [registrations] = useState<RegItem[]>(initialRegistrations);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [processingId, setProcessingId] = useState<string | null>(null);
-
-  async function handleApprove(id: string) {
-    if (!confirm("Are you sure you want to approve this registration?")) return;
-    setProcessingId(id);
-    try {
-      const res = await approveRegistration(id);
-      if (res.success) {
-        setRegistrations((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, status: "approved" } : r))
-        );
-      } else {
-        alert(res.message || "Failed to approve registration.");
-      }
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "An error occurred.");
-    } finally {
-      setProcessingId(null);
-    }
-  }
-
-  async function handleReject(id: string) {
-    const reason = prompt("Enter the reason for rejection:");
-    if (reason === null) return;
-    if (!reason.trim()) {
-      alert("Rejection reason is required.");
-      return;
-    }
-    
-    setProcessingId(id);
-    try {
-      const res = await rejectRegistration(id, reason);
-      if (res.success) {
-        setRegistrations((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, status: "rejected" } : r))
-        );
-      } else {
-        alert(res.message || "Failed to reject registration.");
-      }
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "An error occurred.");
-    } finally {
-      setProcessingId(null);
-    }
-  }
 
   const filtered = registrations.filter((r) => {
     const matchStatus = statusFilter === "all" || r.status === statusFilter;
@@ -100,9 +56,9 @@ export default function RegistrationsBrowser({ initialRegistrations }: BrowserPr
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {[
-          { label: "All", value: "all" },
-          { label: "Pending", value: "awaiting_verification" },
+          {[
+            { label: "All", value: "all" },
+          { label: "Received", value: "awaiting_verification" },
           { label: "Approved", value: "approved" },
           { label: "Rejected", value: "rejected" },
         ].map((f) => (
@@ -138,7 +94,7 @@ export default function RegistrationsBrowser({ initialRegistrations }: BrowserPr
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-[var(--cream-deep)]/50" style={{ borderBottom: "1px solid var(--surface-border)" }}>
-              {["Name", "Event", "Date", "Payment", "Amount", "Status", "Actions"].map((h) => (
+              {["Name", "Event", "Date", "Payment", "Amount", "Status", "Details"].map((h) => (
                 <th
                   key={h}
                   className="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-[var(--ink-mute)] font-medium"
@@ -151,7 +107,6 @@ export default function RegistrationsBrowser({ initialRegistrations }: BrowserPr
           <tbody>
             {filtered.map((reg) => {
               const style = STATUS_STYLES[reg.status] || STATUS_STYLES.approved;
-              const isLocked = processingId === reg.id;
               
               return (
                 <tr
@@ -170,7 +125,7 @@ export default function RegistrationsBrowser({ initialRegistrations }: BrowserPr
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-[10px] uppercase tracking-wider text-[var(--ink-mute)]">
-                      {reg.payment === "razorpay" ? "💳" : reg.payment === "manual_upi" ? "📱" : "🎉"}{" "}
+                      {reg.payment === "manual_upi" ? "UPI" : "Free"}{" "}
                       {reg.payment.replace("_", " ")}
                     </span>
                   </td>
@@ -187,26 +142,6 @@ export default function RegistrationsBrowser({ initialRegistrations }: BrowserPr
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      {reg.status === "awaiting_verification" && (
-                        <>
-                          <button
-                            onClick={() => handleApprove(reg.id)}
-                            disabled={isLocked}
-                            className="text-[10px] px-2.5 py-1 rounded-lg font-medium transition-all hover:-translate-y-0.5 disabled:opacity-50"
-                            style={{ background: "rgba(46,122,76,0.10)", color: "var(--ok)" }}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleReject(reg.id)}
-                            disabled={isLocked}
-                            className="text-[10px] px-2.5 py-1 rounded-lg font-medium disabled:opacity-50"
-                            style={{ background: "rgba(179,58,42,0.10)", color: "var(--danger)" }}
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
                       <Link
                         href={`/admin/registrations/${reg.id}`}
                         className="text-[10px] px-2.5 py-1 rounded-lg surface text-[var(--ink-dim)] hover:text-[var(--green-ink)] transition-all"

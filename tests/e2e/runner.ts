@@ -10,20 +10,6 @@ import { approveRegistration, rejectRegistration, refundRegistration, markAttend
 import { setVirtualCookie, clearVirtualCookies, cookies } from "./mocks/next-headers";
 import { getPublishedEvents } from "@/lib/data/events";
 
-// Stub Turnstile verification endpoint using globalThis.fetch
-const originalFetch = globalThis.fetch;
-globalThis.fetch = async function (input, init) {
-  const url = typeof input === "string" ? input : input instanceof URL ? input.href : (input as any).url;
-  if (url && url.includes("challenges.cloudflare.com/turnstile/v0/siteverify")) {
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({ success: true }),
-    } as Response;
-  }
-  return originalFetch(input, init);
-};
-
 const adminClient = createAdminClient();
 
 // Shared test state
@@ -402,7 +388,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "dummy-token",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -420,7 +405,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "dummy-token",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -439,7 +423,6 @@ async function runTests() {
       age: 30,
       city: "Delhi",
       consent: true,
-      turnstileToken: "token-abc",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -477,7 +460,6 @@ async function runTests() {
       age: 28,
       city: "Pune",
       consent: true,
-      turnstileToken: "token-upi",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "upi_screenshot.png",
     });
@@ -488,12 +470,12 @@ async function runTests() {
     await adminClient.from("events").delete().eq("id", res.eventId!);
   });
 
-  await test("T1.4.3", "Submit Razorpay payment details for a paid event", async () => {
-    const rpEventSlug = `e2e-rp-${Math.random().toString(36).substring(2, 8)}`;
+  await test("T1.4.3", "Reject manual UPI registration without payment proof", async () => {
+    const upiEventSlug = `e2e-upi-missing-proof-${Math.random().toString(36).substring(2, 8)}`;
     const res = await createEvent({
-      slug: rpEventSlug,
-      title: "Razorpay Event",
-      description: "Paid Razorpay.",
+      slug: upiEventSlug,
+      title: "UPI Missing Proof Event",
+      description: "Paid manual UPI.",
       category: "other",
       startAt: new Date(Date.now() + 24000).toISOString(),
       endAt: new Date(Date.now() + 25000).toISOString(),
@@ -502,34 +484,25 @@ async function runTests() {
       venueMapUrl: "",
       capacity: 5,
       pricePaise: 15000,
-      paymentMode: "razorpay",
+      paymentMode: "manual_upi",
+      upiId: "upi@ok",
       refundPolicy: "No refunds.",
     });
 
     await publishEvent(res.eventId!);
 
-    // Register attendee (should return Razorpay order if credentials exist, or failure if Razorpay credentials are not set)
     const regRes = await registerAttendee({
       eventId: res.eventId!,
-      fullName: "RP User",
+      fullName: "Missing Proof User",
       phone: "9876543222",
-      email: "rp-user@e2e-test.com",
+      email: "missing-proof@e2e-test.com",
       age: 28,
       city: "Pune",
       consent: true,
-      turnstileToken: "token-rp",
-      screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-      screenshotName: "screenshot.png",
     });
 
-    // If Razorpay keys aren't set in env, it returns success: false. We accept either a valid order OR the expected configuration error.
-    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) {
-      assert(regRes.success === false, "Should return failure because Razorpay keys are not configured");
-      assert(regRes.message!.includes("configured") || regRes.message!.includes("integration"), "Message should mention Razorpay config");
-    } else {
-      assert(regRes.success === true, `Razorpay registration failed: ${regRes.message}`);
-      assertEqual(regRes.status, "awaiting_payment");
-    }
+    assert(regRes.success === false, "Manual UPI registration without screenshot should fail");
+    assert(regRes.message!.includes("screenshot") || regRes.message!.includes("proof"), "Message should mention payment proof");
 
     await adminClient.from("events").delete().eq("id", res.eventId!);
   });
@@ -847,7 +820,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "token-full",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -867,7 +839,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "token-bad",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -890,7 +861,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "token-spam",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -920,7 +890,6 @@ async function runTests() {
       age: 10, // Under 13
       city: "Chennai",
       consent: true,
-      turnstileToken: "token-kid",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -957,7 +926,6 @@ async function runTests() {
       age: 28,
       city: "Pune",
       consent: true,
-      turnstileToken: "token-upi-err",
       // No screenshot
     });
 
@@ -1081,7 +1049,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "tok",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -1098,7 +1065,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "tok",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -1138,7 +1104,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "tok",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "ss.png",
     });
@@ -1185,7 +1150,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "tok",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -1290,7 +1254,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "tok",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -1308,7 +1271,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "tok",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -1353,7 +1315,6 @@ async function runTests() {
       age: 26,
       city: "Mumbai",
       consent: true,
-      turnstileToken: "tok",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "upi.png",
     });
@@ -1421,7 +1382,6 @@ async function runTests() {
       age: 27,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "tok",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -1468,7 +1428,6 @@ async function runTests() {
       age: 27,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "tok",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
@@ -1483,12 +1442,6 @@ async function runTests() {
     assertEqual(reg!.status, "refunded");
 
     await adminClient.from("events").delete().eq("id", createRes.eventId!);
-  });
-
-  await test("T4.4", "Turnstile Verification Interception", async () => {
-    const { verifyTurnstile } = require("@/lib/turnstile");
-    const ok = await verifyTurnstile("any-token-here");
-    assert(ok === true, "Turnstile verification should be intercepted and return true");
   });
 
   await test("T4.5", "Spam Prevention and contact blocking", async () => {
@@ -1507,7 +1460,6 @@ async function runTests() {
       age: 25,
       city: "Bangalore",
       consent: true,
-      turnstileToken: "tok",
       screenshotBase64: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       screenshotName: "screenshot.png",
     });
