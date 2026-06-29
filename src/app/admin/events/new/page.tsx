@@ -162,9 +162,6 @@ export default function NewEventPage() {
       if (startDate.getTime() >= endDate.getTime()) {
         errs.endAt = "End time must be after start time";
       }
-      if (startDate.getTime() <= Date.now()) {
-        errs.startAt = "Start time must be in the future";
-      }
     }
 
     return errs;

@@ -21,8 +21,8 @@ const eventInputSchema = z.object({
   description: z.string().min(1),
   coverImageUrl: z.string().optional(),
   category: z.enum(["sound_bath", "supper", "run", "book_circle", "cycling", "other"]),
-  startAt: z.string(), // ISO string
-  endAt: z.string(),
+  startAt: z.string().datetime({ offset: true }), // ISO string with timezone offset
+  endAt: z.string().datetime({ offset: true }),
   venueName: z.string().min(1),
   venueAddress: z.string().min(1),
   venueMapUrl: z.string().url().or(z.literal("")),
@@ -78,6 +78,21 @@ async function writeAuditLog(
   if (error) {
     console.error("Failed to write audit log:", error.message);
   }
+}
+
+function validateEventWindow(startAt: string, endAt: string) {
+  const startDate = new Date(startAt);
+  const endDate = new Date(endAt);
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return { ok: false, message: "startAt and endAt must be valid ISO timestamps" };
+  }
+
+  if (startDate.getTime() >= endDate.getTime()) {
+    return { ok: false, message: "endAt must be after startAt" };
+  }
+
+  return { ok: true } as const;
 }
 
 export type ActionState = {
@@ -211,6 +226,11 @@ export async function createEvent(rawInput: unknown): Promise<ActionState> {
       return { success: false, message: "UPI ID is required for paid manual UPI events." };
     }
 
+    const windowValidation = validateEventWindow(input.startAt, input.endAt);
+    if (!windowValidation.ok) {
+      return { success: false, message: windowValidation.message };
+    }
+
     // Check slug uniqueness
     const { data: existingSlug } = await supabase
       .from("events")
@@ -294,6 +314,11 @@ export async function updateEvent(eventId: string, rawInput: unknown): Promise<A
 
     if (input.paymentMode === "manual_upi" && input.pricePaise > 0 && !input.upiId?.trim()) {
       return { success: false, message: "UPI ID is required for paid manual UPI events." };
+    }
+
+    const windowValidation = validateEventWindow(input.startAt, input.endAt);
+    if (!windowValidation.ok) {
+      return { success: false, message: windowValidation.message };
     }
 
     // Get old data for audit log
