@@ -6,6 +6,7 @@ import Link from "next/link";
 import { updateEvent, uploadEventMedia } from "@/lib/actions/admin-events";
 import type { Event } from "@/lib/types";
 import { DEFAULT_UPI_ID, DEFAULT_UPI_QR_IMAGE_URL } from "@/lib/payments";
+import { formatDatetimeLocalFromIso, parseDatetimeLocalToIso } from "@/lib/mock-data";
 
 const CATEGORIES = [
   { value: "sound_bath", label: "Sound Bath" },
@@ -15,22 +16,6 @@ const CATEGORIES = [
   { value: "cycling", label: "Cycling" },
   { value: "other", label: "Other" },
 ];
-
-function formatIsoToDatetimeLocal(isoString?: string): string {
-  if (!isoString) return "";
-  const date = new Date(isoString);
-  if (isNaN(date.getTime())) return "";
-
-  const pad = (num: number) => String(num).padStart(2, "0");
-
-  const yyyy = date.getFullYear();
-  const mm = pad(date.getMonth() + 1);
-  const dd = pad(date.getDate());
-  const hh = pad(date.getHours());
-  const min = pad(date.getMinutes());
-
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-}
 
 interface EditEventFormProps {
   event: Event;
@@ -50,8 +35,8 @@ export default function EditEventForm({ event }: EditEventFormProps) {
     description: event.description || "",
     coverImageUrl: event.cover_image_url || "",
     category: event.category || "other",
-    startAt: formatIsoToDatetimeLocal(event.start_at),
-    endAt: formatIsoToDatetimeLocal(event.end_at),
+    startAt: formatDatetimeLocalFromIso(event.start_at),
+    endAt: formatDatetimeLocalFromIso(event.end_at),
     venueName: event.venue_name || "",
     venueAddress: event.venue_address || "",
     venueMapUrl: event.venue_map_url || "",
@@ -157,6 +142,25 @@ export default function EditEventForm({ event }: EditEventFormProps) {
       errs.communityGroupInvite = "Use a full HTTPS WhatsApp invite link";
     }
 
+    const startAt = parseDatetimeLocalToIso(form.startAt);
+    const endAt = parseDatetimeLocalToIso(form.endAt);
+
+    if (form.startAt && !startAt) {
+      errs.startAt = "Invalid start time format";
+    }
+
+    if (form.endAt && !endAt) {
+      errs.endAt = "Invalid end time format";
+    }
+
+    if (startAt && endAt) {
+      const startDate = new Date(startAt);
+      const endDate = new Date(endAt);
+      if (startDate.getTime() >= endDate.getTime()) {
+        errs.endAt = "End time must be after start time";
+      }
+    }
+
     return errs;
   }
 
@@ -169,6 +173,8 @@ export default function EditEventForm({ event }: EditEventFormProps) {
     }
 
     setSubmitting(true);
+    const startAt = parseDatetimeLocalToIso(form.startAt);
+    const endAt = parseDatetimeLocalToIso(form.endAt);
 
     try {
       const payload = {
@@ -178,8 +184,8 @@ export default function EditEventForm({ event }: EditEventFormProps) {
         description: form.description,
         coverImageUrl: form.coverImageUrl,
         category: form.category,
-        startAt: new Date(form.startAt).toISOString(),
-        endAt: new Date(form.endAt).toISOString(),
+        startAt,
+        endAt,
         venueName: form.venueName,
         venueAddress: form.venueAddress,
         venueMapUrl: form.venueMapUrl,

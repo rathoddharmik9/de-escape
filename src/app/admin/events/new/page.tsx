@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createEvent, uploadEventMedia } from "@/lib/actions/admin-events";
+import { parseDatetimeLocalToIso } from "@/lib/mock-data";
 import { DEFAULT_UPI_ID, DEFAULT_UPI_QR_IMAGE_URL } from "@/lib/payments";
 
 const CATEGORIES = [
@@ -143,7 +144,29 @@ export default function NewEventPage() {
     if (form.communityGroupInvite && !form.communityGroupInvite.startsWith("https://")) {
       errs.communityGroupInvite = "Use a full HTTPS WhatsApp invite link";
     }
-    
+
+    const startAt = parseDatetimeLocalToIso(form.startAt);
+    const endAt = parseDatetimeLocalToIso(form.endAt);
+
+    if (form.startAt && !startAt) {
+      errs.startAt = "Invalid start time format";
+    }
+
+    if (form.endAt && !endAt) {
+      errs.endAt = "Invalid end time format";
+    }
+
+    if (startAt && endAt) {
+      const startDate = new Date(startAt);
+      const endDate = new Date(endAt);
+      if (startDate.getTime() >= endDate.getTime()) {
+        errs.endAt = "End time must be after start time";
+      }
+      if (startDate.getTime() <= Date.now()) {
+        errs.startAt = "Start time must be in the future";
+      }
+    }
+
     return errs;
   }
 
@@ -156,6 +179,8 @@ export default function NewEventPage() {
     }
 
     setSubmitting(true);
+    const startAt = parseDatetimeLocalToIso(form.startAt);
+    const endAt = parseDatetimeLocalToIso(form.endAt);
 
     try {
       const payload = {
@@ -165,8 +190,8 @@ export default function NewEventPage() {
         description: form.description,
         coverImageUrl: form.coverImageUrl,
         category: form.category,
-        startAt: new Date(form.startAt).toISOString(),
-        endAt: new Date(form.endAt).toISOString(),
+        startAt,
+        endAt,
         venueName: form.venueName,
         venueAddress: form.venueAddress,
         venueMapUrl: form.venueMapUrl,

@@ -148,9 +148,37 @@ export function formatPrice(paise: number): string {
   return `₹${(paise / 100).toLocaleString("en-IN")}`;
 }
 
+const INDIAN_DATETIME_OPTIONS = {
+  timeZone: "Asia/Kolkata",
+} as const;
+
+export function formatDatetimeLocalFromIso(isoString: string): string {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    ...INDIAN_DATETIME_OPTIONS,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`;
+}
+
+export function parseDatetimeLocalToIso(datetimeLocal: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(datetimeLocal)) return "";
+  const parsed = new Date(`${datetimeLocal}:00+05:30`);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-IN", {
-    timeZone: "Asia/Kolkata",
+    ...INDIAN_DATETIME_OPTIONS,
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -160,7 +188,7 @@ export function formatDate(iso: string): string {
 
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-IN", {
-    timeZone: "Asia/Kolkata",
+    ...INDIAN_DATETIME_OPTIONS,
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
