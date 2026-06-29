@@ -150,6 +150,7 @@ export function formatPrice(paise: number): string {
 
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -159,6 +160,7 @@ export function formatDate(iso: string): string {
 
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
