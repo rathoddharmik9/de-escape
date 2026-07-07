@@ -82,10 +82,11 @@ const instagramSchema = z.preprocess(
 const heardFromSchema = z.preprocess(
   (value) => (typeof value === "string" ? value.trim().replace(/\s+/g, " ") : value),
   z
-    .string({ error: "Please select how you heard about us" })
-    .min(1, "Please select how you heard about us")
+    .string()
     .max(80, "Must be 80 characters or fewer")
-    .refine((value) => HEARD_FROM_OPTIONS.has(value), "Choose a valid source")
+    .refine((value) => !value || HEARD_FROM_OPTIONS.has(value), "Choose a valid source")
+    .optional()
+    .default("")
 );
 
 export const registrationBaseSchema = z.object({
@@ -94,10 +95,10 @@ export const registrationBaseSchema = z.object({
   phone: indianMobileSchema,
   email: emailSchema,
   age: z.coerce.number().int("Age must be a whole number").min(13, "You must be at least 13").max(99, "Age must be 99 or below"),
-  city: stringField("City / neighbourhood must be at least 2 characters", 80, 2),
-  instagram: instagramSchema,
+  city: stringField("Area must be at least 2 characters", 80, 2),
+  instagram: z.string().optional(),
   heardFrom: heardFromSchema,
-  notes: stringField("Anything we should know is required", 400),
+  notes: z.string().optional(),
   consent: z.literal(true, { error: "Consent is required to proceed" }),
 });
 

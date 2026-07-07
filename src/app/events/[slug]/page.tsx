@@ -150,7 +150,20 @@ export default async function EventDetailPage({ params }: Props) {
             <Reveal>
               <div
                 className="prose prose-lg max-w-none leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: event.description }}
+                dangerouslySetInnerHTML={{
+                  __html: (() => {
+                    const desc = event.description || "";
+                    // If the content already has HTML block tags (from rich editor), use as-is
+                    if (/<(?:p|h[1-6]|ul|ol|li|blockquote|hr)\b/i.test(desc)) {
+                      return desc;
+                    }
+                    // Legacy plain-text: convert newlines to HTML
+                    return desc
+                      .replace(/(?:\r\n|\r|\n){2,}/g, "</p><p>")
+                      .replace(/(?:\r\n|\r|\n)/g, "<br />")
+                      .replace(/^/, "<p>").replace(/$/, "</p>");
+                  })()
+                }}
                 style={{
                   ["--tw-prose-body" as string]: "var(--ink-dim)",
                   ["--tw-prose-headings" as string]: "var(--green-ink)",

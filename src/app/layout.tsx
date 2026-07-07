@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Fredoka, Poppins, Nunito } from "next/font/google";
 import { SceneProvider } from "@/components/motion/SceneProvider";
 import SceneCanvas from "@/components/motion/SceneCanvas";
 import CustomCursor from "@/components/motion/CustomCursor";
 import SmoothScroll from "@/components/motion/SmoothScroll";
 import PageLoaderWrapper from "@/components/layout/PageLoaderWrapper";
+import TopLoadingBar from "@/components/layout/TopLoadingBar";
 import DisableServiceWorker from "@/components/layout/DisableServiceWorker";
 import "./globals.css";
 
@@ -67,6 +69,9 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <DisableServiceWorker />
+        <Suspense fallback={null}>
+          <TopLoadingBar />
+        </Suspense>
         <div className="grain" aria-hidden="true" />
         <SceneProvider>
           <PageLoaderWrapper />

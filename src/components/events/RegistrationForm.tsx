@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, ChevronDown } from "lucide-react";
 import PublicShell from "@/components/layout/PublicShell";
 import MagneticButton from "@/components/motion/MagneticButton";
 import { formatPrice, formatDate } from "@/lib/mock-data";
@@ -125,9 +125,7 @@ export default function RegistrationForm({ event }: FormProps) {
       email: form.email,
       age: form.age,
       city: form.city,
-      instagram: form.instagram,
       heardFrom: form.heardFrom,
-      notes: form.notes,
       consent: form.consent,
     });
     const errs: Record<string, string> = parsed.success ? {} : zodIssuesToFieldErrors(parsed.error);
@@ -177,9 +175,7 @@ export default function RegistrationForm({ event }: FormProps) {
         email: form.email,
         age: parseInt(form.age),
         city: form.city,
-        instagram: form.instagram,
         heardFrom: form.heardFrom,
-        notes: form.notes,
         consent: form.consent,
         screenshotBase64,
         screenshotName,
@@ -226,7 +222,7 @@ export default function RegistrationForm({ event }: FormProps) {
   }
 
   const inputClass = (field: string) =>
-    `w-full px-4 py-3 rounded-xl text-sm text-[var(--green-ink)] placeholder:text-[var(--ink-mute)] outline-none transition-all duration-200 surface focus:border-[var(--green)] focus:shadow-[0_0_0_3px_rgba(200,241,53,0.25)] ${
+    `w-full px-4 py-3 rounded-xl text-sm text-[var(--green-ink)] placeholder:text-[var(--ink-dim)] outline-none transition-all duration-200 surface focus:border-[var(--green)] focus:shadow-[0_0_0_3px_rgba(200,241,53,0.25)] ${
       errors[field] ? "!border-[var(--error)]" : ""
     }`;
 
@@ -238,7 +234,7 @@ export default function RegistrationForm({ event }: FormProps) {
           <Link
             href={`/events/${event.slug}`}
             data-cursor="true"
-            className="inline-flex items-center gap-2 text-xs text-[var(--ink-mute)] hover:text-[var(--green-ink)] mb-8 transition-colors"
+            className="inline-flex items-center gap-2 text-xs text-[var(--ink-dim)] hover:text-[var(--green-ink)] mb-8 transition-colors"
           >
             ← Back to event
           </Link>
@@ -288,7 +284,7 @@ export default function RegistrationForm({ event }: FormProps) {
                   </div>
                   {copiedUpi && <p className="text-[10px] text-[var(--green)] mt-1">UPI ID copied.</p>}
                   {errors.upi && <p className="text-[10px] text-[var(--error)] mt-1">{errors.upi}</p>}
-                  <p className="text-xs text-[var(--ink-mute)] mt-2">
+                  <p className="text-xs text-[var(--ink-dim)] mt-2">
                     Send <strong className="text-[var(--green-ink)]">{formatPrice(event.price_paise)}</strong> to the UPI ID above, then upload your payment screenshot below.
                   </p>
                 </div>
@@ -298,7 +294,7 @@ export default function RegistrationForm({ event }: FormProps) {
                     <img src={paymentQrImageUrl} alt={`UPI QR code for ${event.title}`} className="w-full max-w-[340px] aspect-square object-contain" />
                   ) : (
                     <div className="text-center px-2">
-                      <div className="text-[10px] uppercase tracking-widest text-[var(--ink-mute)]">UPI QR</div>
+                      <div className="text-[10px] uppercase tracking-widest text-[var(--ink-dim)]">UPI QR</div>
                       <div className="text-xs text-[var(--ink-dim)] mt-1">Admin has not added a QR yet.</div>
                     </div>
                   )}
@@ -322,7 +318,7 @@ export default function RegistrationForm({ event }: FormProps) {
             )}
             {/* Full name */}
             <div>
-              <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
+              <label className="block text-xs uppercase tracking-widest font-bold text-[var(--green-ink)] mb-2">
                 Full name <span className="text-[var(--green)]">*</span>
               </label>
               <input name="fullName" type="text" placeholder="Priya Sharma" value={form.fullName} onChange={(e) => set("fullName", e.target.value)} className={inputClass("fullName")} />
@@ -332,14 +328,14 @@ export default function RegistrationForm({ event }: FormProps) {
             {/* Phone + Email */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
+                <label className="block text-xs uppercase tracking-widest font-bold text-[var(--green-ink)] mb-2">
                   Phone <span className="text-[var(--green)]">*</span>
                 </label>
                 <input name="phone" type="tel" placeholder="9876543210" value={form.phone} onChange={(e) => set("phone", e.target.value)} className={inputClass("phone")} />
                 {errors.phone && <p data-field-error="phone" className="mt-1.5 text-xs text-[var(--error)]">{errors.phone}</p>}
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
+                <label className="block text-xs uppercase tracking-widest font-bold text-[var(--green-ink)] mb-2">
                   Email <span className="text-[var(--green)]">*</span>
                 </label>
                 <input name="email" type="email" placeholder="priya@email.com" value={form.email} onChange={(e) => set("email", e.target.value)} className={inputClass("email")} />
@@ -350,71 +346,51 @@ export default function RegistrationForm({ event }: FormProps) {
             {/* Age + City */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
+                <label className="block text-xs uppercase tracking-widest font-bold text-[var(--green-ink)] mb-2">
                   Age <span className="text-[var(--green)]">*</span>
                 </label>
                 <input name="age" type="number" placeholder="27" min={13} max={99} value={form.age} onChange={(e) => set("age", e.target.value)} className={inputClass("age")} />
                 {errors.age && <p data-field-error="age" className="mt-1.5 text-xs text-[var(--error)]">{errors.age}</p>}
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
-                  City / Neighbourhood <span className="text-[var(--green)]">*</span>
+                <label className="block text-xs uppercase tracking-widest font-bold text-[var(--green-ink)] mb-2">
+                  Area <span className="text-[var(--green)]">*</span>
                 </label>
-                <input name="city" type="text" placeholder="Mumbai" value={form.city} onChange={(e) => set("city", e.target.value)} className={inputClass("city")} />
+                <input name="city" type="text" placeholder="e.g. Malad" value={form.city} onChange={(e) => set("city", e.target.value)} className={inputClass("city")} />
                 {errors.city && <p data-field-error="city" className="mt-1.5 text-xs text-[var(--error)]">{errors.city}</p>}
               </div>
             </div>
 
-            {/* Instagram */}
-            <div>
-              <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
-                Instagram <span className="text-[var(--green)]">*</span>
-              </label>
-              <input name="instagram" type="text" placeholder="@yourhandle" value={form.instagram} onChange={(e) => set("instagram", e.target.value)} className={inputClass("instagram")} />
-              {errors.instagram && <p data-field-error="instagram" className="mt-1.5 text-xs text-[var(--error)]">{errors.instagram}</p>}
-            </div>
-
             {/* How did you hear */}
             <div>
-              <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
-                How did you hear about us? <span className="text-[var(--green)]">*</span>
+              <label className="block text-xs uppercase tracking-widest font-bold text-[var(--green-ink)] mb-2">
+                How did you hear about us?
               </label>
-              <select
-                name="heardFrom"
-                value={form.heardFrom}
-                onChange={(e) => set("heardFrom", e.target.value)}
-                className={`${inputClass("heardFrom")} appearance-none`}
-              >
-                <option value="">Select…</option>
-                {HEARD_FROM_OPTIONS.map((o) => (
-                  <option key={o} value={o}>{o}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  name="heardFrom"
+                  value={form.heardFrom}
+                  onChange={(e) => set("heardFrom", e.target.value)}
+                  className={`${inputClass("heardFrom")} appearance-none pr-10`}
+                >
+                  <option value="">Select…</option>
+                  {HEARD_FROM_OPTIONS.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-[var(--green-ink)]">
+                  <ChevronDown size={16} />
+                </div>
+              </div>
               {errors.heardFrom && <p data-field-error="heardFrom" className="mt-1.5 text-xs text-[var(--error)]">{errors.heardFrom}</p>}
             </div>
 
-            {/* Notes */}
-            <div>
-              <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
-                Anything we should know? <span className="text-[var(--green)]">*</span>
-              </label>
-              <textarea
-                placeholder="Dietary restrictions, accessibility needs, or just a hello…"
-                rows={3}
-                maxLength={400}
-                value={form.notes}
-                onChange={(e) => set("notes", e.target.value)}
-                name="notes"
-                className={`${inputClass("notes")} resize-none`}
-              />
-              {errors.notes && <p data-field-error="notes" className="mt-1.5 text-xs text-[var(--error)]">{errors.notes}</p>}
-              <p className="text-[10px] text-[var(--ink-mute)] text-right mt-1">{form.notes.length}/400</p>
-            </div>
+
 
             {/* Screenshot upload for UPI */}
             {event.payment_mode === "manual_upi" && (
               <div>
-                <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
+                <label className="block text-xs uppercase tracking-widest font-bold text-[var(--green-ink)] mb-2">
                   Payment screenshot <span className="text-[var(--green)]">*</span>
                 </label>
                 <label
@@ -432,13 +408,13 @@ export default function RegistrationForm({ event }: FormProps) {
                         <div className="text-2xl mb-2">Selected</div>
                       )}
                       <div className="text-sm font-medium text-[var(--green-deep)]">{form.screenshot.name}</div>
-                      <div className="text-xs text-[var(--ink-mute)] mt-1">{(form.screenshot.size / 1024 / 1024).toFixed(2)} MB</div>
+                      <div className="text-xs text-[var(--ink-dim)] mt-1">{(form.screenshot.size / 1024 / 1024).toFixed(2)} MB</div>
                     </div>
                   ) : (
                     <div>
                       <div className="text-3xl mb-3">Upload proof</div>
                       <div className="text-sm text-[var(--ink-dim)]">Drop screenshot here or click to upload</div>
-                      <div className="text-xs text-[var(--ink-mute)] mt-1">JPEG, PNG, HEIC · max 5 MB</div>
+                      <div className="text-xs text-[var(--ink-dim)] mt-1">JPEG, PNG, HEIC · max 5 MB</div>
                     </div>
                   )}
                 </label>
@@ -481,7 +457,7 @@ export default function RegistrationForm({ event }: FormProps) {
                                 )}
                               </div>
                             </div>
-                            <span className="text-sm text-[var(--ink-dim)] leading-relaxed">
+                            <span className="text-sm font-semibold text-[var(--green-ink)] leading-relaxed">
                               {field.label} <span className="text-[var(--green)]">*</span>
                             </span>
                           </label>
@@ -489,7 +465,7 @@ export default function RegistrationForm({ event }: FormProps) {
                         </div>
                       ) : (
                         <div>
-                          <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2">
+                          <label className="block text-xs uppercase tracking-widest font-bold text-[var(--green-ink)] mb-2">
                             {field.label} <span className="text-[var(--green)]">*</span>
                           </label>
                           {field.type === "textarea" ? (
@@ -505,22 +481,27 @@ export default function RegistrationForm({ event }: FormProps) {
                               rows={3}
                             />
                           ) : field.type === "select" ? (
-                            <select
-                              name={field.key}
-                              value={(value as string) || ""}
-                              onChange={(e) => {
-                                setCustomAnswers((prev) => ({ ...prev, [field.key]: e.target.value }));
-                                setErrors((prev) => ({ ...prev, [field.key]: "" }));
-                              }}
-                              className={`${inputClass(field.key)} appearance-none`}
-                            >
-                              <option value="">Select…</option>
-                              {field.options?.map((opt) => (
-                                <option key={opt} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="relative">
+                              <select
+                                name={field.key}
+                                value={(value as string) || ""}
+                                onChange={(e) => {
+                                  setCustomAnswers((prev) => ({ ...prev, [field.key]: e.target.value }));
+                                  setErrors((prev) => ({ ...prev, [field.key]: "" }));
+                                }}
+                                className={`${inputClass(field.key)} appearance-none pr-10`}
+                              >
+                                <option value="">Select…</option>
+                                {field.options?.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-[var(--green-ink)]">
+                                <ChevronDown size={16} />
+                              </div>
+                            </div>
                           ) : field.type === "number" ? (
                             <input
                               name={field.key}
@@ -580,7 +561,7 @@ export default function RegistrationForm({ event }: FormProps) {
                     )}
                   </div>
                 </div>
-                <span className="text-sm text-[var(--ink-dim)] leading-relaxed">
+                <span className="text-sm font-semibold text-[var(--green-ink)] leading-relaxed">
                   Send me WhatsApp + email updates about this event and De-escape. <span className="text-[var(--green)]">*</span>
                 </span>
               </label>
@@ -612,7 +593,7 @@ export default function RegistrationForm({ event }: FormProps) {
               </button>
             </MagneticButton>
 
-            <p className="text-center text-[11px] text-[var(--ink-mute)]">
+            <p className="text-center text-[11px] text-[var(--ink-dim)]">
               By submitting, you agree to our{" "}
               <Link href="/terms" className="underline hover:text-[var(--green)]">Terms</Link>.
               {/* {" "}and{" "}

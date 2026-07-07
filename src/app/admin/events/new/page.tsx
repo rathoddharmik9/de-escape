@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createEvent, uploadEventMedia } from "@/lib/actions/admin-events";
 import { parseDatetimeLocalToIso } from "@/lib/mock-data";
 import { DEFAULT_UPI_ID, DEFAULT_UPI_QR_IMAGE_URL } from "@/lib/payments";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 const CATEGORIES = [
   { value: "sound_bath", label: "Sound Bath" },
@@ -274,12 +275,12 @@ export default function NewEventPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2 font-medium">Start Time (IST)</label>
-            <input type="datetime-local" value={form.startAt} onChange={(e) => set("startAt", e.target.value)} className={inputClass("startAt")} />
+            <DateTimePicker value={form.startAt} onChange={(val) => set("startAt", val)} error={errors.startAt} />
             {errors.startAt && <p className="mt-1.5 text-xs text-[var(--danger)]">{errors.startAt}</p>}
           </div>
           <div>
             <label className="block text-xs uppercase tracking-widest text-[var(--ink-mute)] mb-2 font-medium">End Time (IST)</label>
-            <input type="datetime-local" value={form.endAt} onChange={(e) => set("endAt", e.target.value)} className={inputClass("endAt")} />
+            <DateTimePicker value={form.endAt} onChange={(val) => set("endAt", val)} error={errors.endAt} />
             {errors.endAt && <p className="mt-1.5 text-xs text-[var(--danger)]">{errors.endAt}</p>}
           </div>
         </div>

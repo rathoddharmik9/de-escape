@@ -125,3 +125,58 @@ html.loader-skipped .loader-overlay {
   display: none !important;
 }
 
+/* ─── TipTap Rich Editor ─── */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--ink-mute);
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
+
+.tiptap {
+  caret-color: var(--green);
+}
+
+.tiptap:focus {
+  outline: none;
+}
+
+.tiptap h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1.25em 0 0.5em;
+  color: var(--green-ink);
+}
+
+.tiptap h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1em 0 0.4em;
+  color: var(--green-ink);
+}
+
+.tiptap p {
+  margin: 0.5em 0;
+}
+
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.25em;
+  margin: 0.5em 0;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid var(--green);
+  padding-left: 1em;
+  margin: 0.75em 0;
+  color: var(--ink-dim);
+  font-style: italic;
+}
+
+.tiptap hr {
+  border: none;
+  border-top: 1px solid var(--surface-border);
+  margin: 1em 0;
+}
