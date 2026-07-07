@@ -142,9 +142,11 @@ export default function TopLoadingBar() {
 
   // Cleanup timers on unmount
   useEffect(() => {
+    const trickleTimer = trickleTimerRef.current;
+    const animFrame = animFrameRef.current;
     return () => {
-      clearInterval(trickleTimerRef.current);
-      cancelAnimationFrame(animFrameRef.current);
+      clearInterval(trickleTimer);
+      cancelAnimationFrame(animFrame);
     };
   }, []);
 

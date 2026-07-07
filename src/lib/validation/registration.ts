@@ -71,13 +71,6 @@ const fullNameSchema = z.preprocess(
     .refine((value) => value.replace(nonLetterPattern, "").length >= 2, "Full name must include at least 2 letters")
 );
 
-const instagramSchema = z.preprocess(
-  (value) => (typeof value === "string" ? normalizeInstagramHandle(value) : value),
-  z
-    .string({ error: "Instagram is required" })
-    .min(1, "Instagram is required")
-    .regex(/^[A-Za-z0-9._]{1,30}$/, "Enter a valid Instagram handle")
-);
 
 const heardFromSchema = z.preprocess(
   (value) => (typeof value === "string" ? value.trim().replace(/\s+/g, " ") : value),
