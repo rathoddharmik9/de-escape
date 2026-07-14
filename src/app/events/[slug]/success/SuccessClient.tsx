@@ -15,7 +15,8 @@ export default function SuccessClient({ eventGroupInviteLink }: SuccessClientPro
   const lastReg = useSessionStore((state) => state.lastRegistration);
 
   const name = lastReg?.fullName || params?.get("name") || "Explorer";
-  const groupInviteLink = lastReg?.groupInviteLink || eventGroupInviteLink || "";
+  // Server-provided data reflects the current event/admin setting; session data can be from an older registration.
+  const groupInviteLink = eventGroupInviteLink || lastReg?.groupInviteLink || "";
 
   const checkRef = useRef<SVGCircleElement>(null);
   const burstRef = useRef<HTMLDivElement>(null);

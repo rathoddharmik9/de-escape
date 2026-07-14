@@ -216,7 +216,12 @@ export default function RegistrationForm({ event }: FormProps) {
       router.push(`/events/${event.slug}/success?reg=${res.registrationId}`);
     } catch (err) {
       console.error("Submit handler error:", err);
-      setErrors((prev) => ({ ...prev, submit: "Failed to submit registration. Please try again." }));
+      const isUploadSizeError = err instanceof Error && err.message.includes("Body exceeded");
+      setErrors((prev) => ({
+        ...prev,
+        ...(isUploadSizeError ? { screenshot: "Payment screenshot must be 5 MB or smaller." } : {}),
+        submit: isUploadSizeError ? "Please choose a smaller payment screenshot." : "Failed to submit registration. Please try again.",
+      }));
       setSubmitting(false);
     }
   }
@@ -394,9 +399,10 @@ export default function RegistrationForm({ event }: FormProps) {
                   Payment screenshot <span className="text-[var(--green)]">*</span>
                 </label>
                 <label
+                  aria-invalid={!!errors.screenshot}
                   className={`block w-full rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all duration-200 hover:border-[var(--green)] hover:bg-[rgba(44,138,75,0.04)] ${
-                    errors.screenshot ? "border-[var(--error)]" : "border-[var(--surface-border)]"
-                  } ${form.screenshot ? "!border-[var(--lime-deep)] bg-[rgba(200,241,53,0.08)]" : ""}`}
+                    errors.screenshot ? "border-[var(--error)] bg-[rgba(220,38,38,0.06)] hover:!border-[var(--error)] hover:!bg-[rgba(220,38,38,0.1)]" : "border-[var(--surface-border)]"
+                  } ${form.screenshot && !errors.screenshot ? "!border-[var(--lime-deep)] bg-[rgba(200,241,53,0.08)]" : ""}`}
                 >
                   <input name="screenshot" type="file" accept="image/jpeg,image/png,image/heic,image/heif" className="sr-only" onChange={(e) => handleScreenshotChange(e.target.files?.[0] || null)} />
                   {form.screenshot ? (

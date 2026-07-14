@@ -15,18 +15,13 @@ import {
   formatTime,
   seatsLeft,
 } from "@/lib/mock-data";
-import { getEventBySlug, getEventBySlugBuild, getEventGalleryImages, getPublishedEventSlugs } from "@/lib/data/events";
+import { getEventBySlug, getEventBySlugBuild, getEventGalleryImages } from "@/lib/data/events";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 interface Props {
   params: { slug: string };
-}
-
-export async function generateStaticParams() {
-  const slugs = await getPublishedEventSlugs();
-  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: Props) {
